@@ -10,6 +10,7 @@ import { PasswordForm } from "@/components/settings/PasswordForm";
 import { SignOutButton } from "@/components/settings/SignOutButton";
 import { SectionTitle } from "@/components/ui/Bits";
 import { ThemeToggle } from "@/components/settings/ThemeToggle";
+import { DangerZone } from "@/components/settings/DangerZone";
 
 export const metadata = { title: "Settings" };
 
@@ -78,6 +79,7 @@ export default async function SettingsPage() {
       </section>
 
       <SignOutButton />
+      {viewer.user.role === "owner" && <DangerZone householdName={h.name} />}
       <p className="px-1 text-center text-xs text-ink-3">Hearth · your data stays in your own database.</p>
     </div>
   );

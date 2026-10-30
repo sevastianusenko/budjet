@@ -2,7 +2,9 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
+import { clearSession } from "@/lib/session";
 import { getDb, schema } from "@/db";
 import { requireViewerForAction } from "@/lib/auth";
 import { errorMessage, ownedMember } from "@/lib/guards";
@@ -91,6 +93,21 @@ export async function regenerateInviteCode(): Promise<ActionResult> {
   } catch (err) {
     return { ok: false, error: errorMessage(err) };
   }
+}
+
+/** Owner only: deletes the household and everything in it (members, entries, plans, goals). Irreversible. */
+export async function deleteHousehold(confirmName: string): Promise<ActionResult> {
+  try {
+    const { user, household } = await requireViewerForAction();
+    if (user.role !== "owner") return { ok: false, error: "Only the household owner can delete it." };
+    if (confirmName.trim() !== household.name.trim()) return { ok: false, error: "Type the household name exactly to confirm." };
+    const db = await getDb();
+    await db.delete(schema.households).where(eq(schema.households.id, household.id));
+    await clearSession();
+  } catch (err) {
+    return { ok: false, error: errorMessage(err) };
+  }
+  redirect("/signup");
 }
 
 export async function changePassword(raw: { current: string; next: string }): Promise<ActionResult> {
