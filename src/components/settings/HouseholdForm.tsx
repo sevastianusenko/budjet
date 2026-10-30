@@ -16,6 +16,9 @@ export function HouseholdForm(props: {
   expectedIncomeCents: number;
   comparisonProfile: string;
   tithePct: number;
+  adults: number;
+  /** Children under 18 (named kids because React reserves children). */
+  kids: number;
 }) {
   const toast = useToast();
   const [pending, start] = useTransition();
@@ -26,6 +29,8 @@ export function HouseholdForm(props: {
   const [savings, setSavings] = useState(props.savingsPct);
   const [profile, setProfile] = useState(props.comparisonProfile);
   const [tithe, setTithe] = useState(props.tithePct);
+  const [adults, setAdults] = useState(props.adults);
+  const [children, setChildren] = useState(props.kids);
   const [error, setError] = useState<string | null>(null);
   const sum = needs + wants + savings;
   const chosen = PROFILES[profile];
@@ -45,6 +50,8 @@ export function HouseholdForm(props: {
             expectedIncomeCents: income.trim() ? parseAmountToCents(income) ?? 0 : 0,
             comparisonProfile: profile,
             tithePct: tithe,
+            adults,
+            children,
           });
           if (!res.ok) return setError(res.error);
           toast({ message: "Household saved" });
@@ -104,7 +111,29 @@ export function HouseholdForm(props: {
             : "0% = off. Set 10% to reserve a tenth of every income in a Tithe fund you give from."}
         </p>
       </div>
-      <Field label="Compare our spending with" hint={chosen ? `${chosen.source}, ${chosen.year}. Average of ${chosen.persons} people per household.` : undefined}>
+      <div>
+        <span className="mb-1.5 block text-[13px] font-medium text-ink-2">Who lives here</span>
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            { v: adults, set: setAdults, label: "Adults", min: 1, max: 8 },
+            { v: children, set: setChildren, label: "Children under 18", min: 0, max: 12 },
+          ].map((f) => (
+            <label key={f.label} className="block">
+              <span className="mb-1 block text-xs font-semibold text-ink-2">{f.label}</span>
+              <input
+                type="number"
+                min={f.min}
+                max={f.max}
+                value={f.v}
+                onChange={(e) => f.set(Math.max(f.min, Math.min(f.max, Number(e.target.value) || f.min)))}
+                className="num h-11 w-full rounded-xl border border-line bg-card px-3 text-[16px] focus:border-green focus:outline-none"
+              />
+            </label>
+          ))}
+        </div>
+        <p className="mt-1.5 text-xs text-ink-3">The comparison on Insights is scaled to a household this size.</p>
+      </div>
+      <Field label="Compare our spending with" hint={chosen ? `${chosen.source}, ${chosen.year}. Scaled from the survey average to your household size.` : undefined}>
         <Select value={profile} onChange={(e) => setProfile(e.target.value)}>
           {Object.values(PROFILES).map((p) => (
             <option key={p.id} value={p.id}>

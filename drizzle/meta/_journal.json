@@ -36,6 +36,13 @@
       "when": 1793365803861,
       "tag": "0004_import_batch",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793371962764,
+      "tag": "0005_household_size",
+      "breakpoints": true
     }
   ]
 }

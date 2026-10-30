@@ -23,6 +23,8 @@ export async function updateHousehold(raw: {
   expectedIncomeCents: number;
   comparisonProfile: string;
   tithePct: number;
+  adults: number;
+  children: number;
 }): Promise<ActionResult> {
   try {
     const parsed = z
@@ -34,6 +36,8 @@ export async function updateHousehold(raw: {
         expectedIncomeCents: z.number().int().min(0),
         comparisonProfile: z.string().refine((v) => v in PROFILES, "Unknown comparison profile."),
         tithePct: z.number().int().min(0).max(50),
+        adults: z.number().int().min(1).max(8),
+        children: z.number().int().min(0).max(12),
       })
       .refine((v) => v.needsPct + v.wantsPct + v.savingsPct === 100, "The three targets must add up to 100%.")
       .parse(raw);

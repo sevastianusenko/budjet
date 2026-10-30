@@ -27,6 +27,9 @@ export const households = pgTable("households", {
   comparisonProfile: text("comparison_profile").notNull().default("us"),
   /** Percent of every income set aside into the Tithe fund automatically. 0 = off. */
   tithePct: integer("tithe_pct").notNull().default(0),
+  /** Household size, used to scale the reference household in comparisons. */
+  adults: integer("adults").notNull().default(2),
+  children: integer("children").notNull().default(0),
   /** Set once the owner finished (or skipped) onboarding. */
   onboardedAt: timestamp("onboarded_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

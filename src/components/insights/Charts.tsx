@@ -2,7 +2,6 @@
 
 import {
   Area,
-  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
@@ -184,45 +183,53 @@ export interface BalanceSeriesPoint {
   total: number;
 }
 
-/** Stacked bands, one per goal (up to four, the rest folded into "Other"), so the total balance is the top edge. */
-export function SavingsBalanceChart({ points, goals }: { points: BalanceSeriesPoint[]; goals: { id: string; name: string }[] }) {
+/**
+ * Stacked bands, one per goal (up to four, the rest folded into "Other"), so the total balance is the top edge.
+ * `forecast` continues the total as a dashed line at the current pace; `target` marks the sum of all goal targets.
+ */
+export function SavingsBalanceChart({ points, goals, forecast = [], target }: { points: BalanceSeriesPoint[]; goals: { id: string; name: string }[]; forecast?: { month: string; total: number }[]; target?: number }) {
   const shown = goals.slice(0, GOAL_SERIES_COLORS.length);
   const rest = goals.slice(GOAL_SERIES_COLORS.length);
-  const data = points.map((p) => {
-    const row: Record<string, number | string> = { month: p.month, label: monthLabel(p.month, "short"), total: p.total };
+  const data: Record<string, number | string | null>[] = points.map((p, i) => {
+    const row: Record<string, number | string | null> = { month: p.month, label: monthLabel(p.month, "short"), total: p.total, forecast: i === points.length - 1 && forecast.length ? p.total : null };
     for (const g of shown) row[g.id] = Math.max(0, p.byGoal[g.id] ?? 0);
     if (rest.length) row.other = rest.reduce((a, g) => a + Math.max(0, p.byGoal[g.id] ?? 0), 0);
     return row;
   });
+  for (const f of forecast) data.push({ month: f.month, label: monthLabel(f.month, "short"), total: null, forecast: f.total, future: 1 });
+  const maxY = Math.max(target ?? 0, ...data.map((d) => Number(d.total ?? 0)), ...data.map((d) => Number(d.forecast ?? 0)));
   return (
-    <div className="h-48 w-full">
+    <div className="h-52 w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 8, right: 4, bottom: 0, left: 0 }}>
+        <ComposedChart data={data} margin={{ top: 8, right: 4, bottom: 0, left: 0 }}>
           <CartesianGrid vertical={false} stroke="var(--line)" strokeWidth={1} />
           <XAxis dataKey="label" tick={axisTick} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-          <YAxis tick={axisTick} axisLine={false} tickLine={false} tickFormatter={compact} width={48} />
+          <YAxis tick={axisTick} axisLine={false} tickLine={false} tickFormatter={compact} width={48} domain={[0, Math.ceil((maxY * 1.05) / 50000) * 50000 || 1]} />
+          {target !== undefined && target > 0 && <ReferenceLine y={target} stroke="var(--ink-3)" strokeDasharray="3 3" label={{ value: `all goals ${compact(target)}`, position: "insideTopLeft", fontSize: 11, fill: "var(--ink-3)" }} />}
           <Tooltip
             cursor={{ stroke: "var(--line-strong)" }}
             content={(p) => {
               const d = p.payload?.[0]?.payload as (typeof data)[number] | undefined;
               if (!p.active || !d) return null;
+              if (d.future) return <TooltipBox title={`${monthLabel(String(d.month))} · forecast`} rows={[{ label: "At the current pace", value: fmtMoney(Number(d.forecast ?? 0), { whole: true }), color: "var(--save)" }]} />;
               return (
                 <TooltipBox
                   title={monthLabel(String(d.month))}
                   rows={[
                     ...shown.map((g, i) => ({ label: g.name, value: fmtMoney(Number(d[g.id] ?? 0), { whole: true }), color: GOAL_SERIES_COLORS[i] })),
                     ...(rest.length ? [{ label: "Other goals", value: fmtMoney(Number(d.other ?? 0), { whole: true }), color: GOAL_OTHER_COLOR }] : []),
-                    { label: "Total", value: fmtMoney(Number(d.total), { whole: true }) },
+                    { label: "Total", value: fmtMoney(Number(d.total ?? 0), { whole: true }) },
                   ]}
                 />
               );
             }}
           />
           {shown.map((g, i) => (
-            <Area key={g.id} type="monotone" dataKey={g.id} stackId="b" stroke="var(--card)" strokeWidth={1} fill={GOAL_SERIES_COLORS[i]} fillOpacity={0.9} isAnimationActive={false} />
+            <Area key={g.id} type="monotone" dataKey={g.id} stackId="b" stroke="var(--card)" strokeWidth={1} fill={GOAL_SERIES_COLORS[i]} fillOpacity={0.9} isAnimationActive={false} connectNulls={false} />
           ))}
           {rest.length > 0 && <Area type="monotone" dataKey="other" stackId="b" stroke="var(--card)" strokeWidth={1} fill={GOAL_OTHER_COLOR} fillOpacity={0.9} isAnimationActive={false} />}
-        </AreaChart>
+          {forecast.length > 0 && <Line type="monotone" dataKey="forecast" stroke="var(--save)" strokeWidth={2} strokeDasharray="5 4" dot={false} connectNulls isAnimationActive={false} />}
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   );

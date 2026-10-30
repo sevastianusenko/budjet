@@ -26,7 +26,7 @@ export default async function SettingsPage() {
       <section>
         <SectionTitle>Household</SectionTitle>
         <div className="space-y-3">
-          <HouseholdForm name={h.name} needsPct={h.needsPct} wantsPct={h.wantsPct} savingsPct={h.savingsPct} expectedIncomeCents={h.expectedIncomeCents} comparisonProfile={h.comparisonProfile} tithePct={h.tithePct} />
+          <HouseholdForm name={h.name} needsPct={h.needsPct} wantsPct={h.wantsPct} savingsPct={h.savingsPct} expectedIncomeCents={h.expectedIncomeCents} comparisonProfile={h.comparisonProfile} tithePct={h.tithePct} adults={h.adults} kids={h.children} />
           <InviteCard code={h.inviteCode} />
         </div>
       </section>
