@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Check, ChevronDown, Delete, ReceiptText } from "lucide-react";
 import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
@@ -555,32 +555,51 @@ function SubChip({ active, label, onClick, muted = false }: { active: boolean; l
   );
 }
 
+/**
+ * Today / Yesterday / Other. "Other" reveals a real date field next to the chips and asks the browser to open
+ * its calendar on it right away (showPicker); where that is refused the field still works by itself, and on
+ * phones tapping the field brings up the native picker.
+ */
 function DateQuick({ value, today, onChange }: { value: string; today: string; onChange: (d: string) => void }) {
+  const ref = useRef<HTMLInputElement>(null);
+  const [open, setOpen] = useState(false);
   const yesterday = addDays(today, -1);
   const custom = value !== today && value !== yesterday;
+  const max = addDays(today, 365);
+  const showCalendar = (el: HTMLInputElement) => {
+    try {
+      el.showPicker?.();
+    } catch {
+      // No native popup here: the visible field is enough.
+    }
+  };
+  useEffect(() => {
+    if (!open || !ref.current) return;
+    ref.current.focus();
+    showCalendar(ref.current);
+  }, [open]);
+  const pick = (d: string) => {
+    setOpen(false);
+    onChange(d);
+  };
   return (
-    <div className="flex items-center gap-1 rounded-xl bg-card-2 p-1">
-      {[today, yesterday].map((d) => (
+    <>
+      <div className="flex items-center gap-1 rounded-xl bg-card-2 p-1">
+        {[today, yesterday].map((d) => (
+          <button key={d} type="button" onClick={() => pick(d)} className={`h-8 rounded-lg px-2.5 text-sm font-medium ${value === d ? "bg-card text-ink shadow-sm" : "text-ink-2"}`}>
+            {dateLabel(d, today)}
+          </button>
+        ))}
         <button
-          key={d}
           type="button"
-          onClick={() => onChange(d)}
-          className={`h-8 rounded-lg px-2.5 text-sm font-medium ${value === d ? "bg-card text-ink shadow-sm" : "text-ink-2"}`}
+          onClick={() => (open && ref.current ? showCalendar(ref.current) : setOpen(true))}
+          aria-expanded={open}
+          className={`h-8 rounded-lg px-2.5 text-sm font-medium ${custom ? "bg-card text-ink shadow-sm" : "text-ink-2"}`}
         >
-          {dateLabel(d, today)}
+          {custom ? dateLabel(value, today) : "Other"}
         </button>
-      ))}
-      <label className={`relative flex h-8 items-center rounded-lg px-2.5 text-sm font-medium ${custom ? "bg-card text-ink shadow-sm" : "text-ink-2"}`}>
-        {custom ? dateLabel(value, today) : "Other"}
-        <input
-          type="date"
-          aria-label="Pick a date"
-          className="absolute inset-0 opacity-0"
-          value={value}
-          max={addDays(today, 365)}
-          onChange={(e) => e.target.value && onChange(e.target.value)}
-        />
-      </label>
-    </div>
+      </div>
+      {open && <input ref={ref} type="date" aria-label="Pick a date" className={`${inputClass} h-10 py-0`} style={{ width: "11.5rem" }} value={value} max={max} onChange={(e) => e.target.value && onChange(e.target.value)} />}
+    </>
   );
 }
