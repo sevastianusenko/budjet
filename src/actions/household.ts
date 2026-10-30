@@ -8,6 +8,7 @@ import { requireViewerForAction } from "@/lib/auth";
 import { errorMessage, ownedMember } from "@/lib/guards";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { PROFILES } from "@/lib/profiles";
+import { ensureTitheGoal } from "@/lib/tithe";
 import type { ActionResult } from "./auth";
 
 const pct = z.number().int().min(0).max(100);
@@ -19,6 +20,7 @@ export async function updateHousehold(raw: {
   savingsPct: number;
   expectedIncomeCents: number;
   comparisonProfile: string;
+  tithePct: number;
 }): Promise<ActionResult> {
   try {
     const parsed = z
@@ -29,12 +31,14 @@ export async function updateHousehold(raw: {
         savingsPct: pct,
         expectedIncomeCents: z.number().int().min(0),
         comparisonProfile: z.string().refine((v) => v in PROFILES, "Unknown comparison profile."),
+        tithePct: z.number().int().min(0).max(50),
       })
       .refine((v) => v.needsPct + v.wantsPct + v.savingsPct === 100, "The three targets must add up to 100%.")
       .parse(raw);
     const { household } = await requireViewerForAction();
     const db = await getDb();
     await db.update(schema.households).set(parsed).where(eq(schema.households.id, household.id));
+    if (parsed.tithePct > 0) await ensureTitheGoal(household.id);
     revalidatePath("/", "layout");
     return { ok: true };
   } catch (err) {

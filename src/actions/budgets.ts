@@ -9,6 +9,7 @@ import { starterPlan } from "@/lib/calc";
 import { addMonths, isValidMonth, monthOf } from "@/lib/dates";
 import { DEFAULT_CATEGORIES, EMERGENCY_FUND_MONTHS, EMERGENCY_FUND_SHARE_PCT, TITHE_SHARE_PCT } from "@/lib/defaults";
 import { errorMessage, ownedCategory } from "@/lib/guards";
+import { ensureTitheGoal } from "@/lib/tithe";
 import type { ActionResult } from "./auth";
 
 const month = z.string().refine(isValidMonth, "Bad month.");
@@ -73,7 +74,6 @@ export async function applyStarterPlan(raw: { incomeCents: number; month?: strin
     const shares = cats
       .map((c) => {
         const def = DEFAULT_CATEGORIES.find((d) => d.name === c.name);
-        if (c.name === "Tithe") return { id: c.id, defaultSharePct: parsed.tithe ? TITHE_SHARE_PCT : 0 };
         return { id: c.id, defaultSharePct: (def?.defaultSharePct ?? 0) * scale };
       })
       .filter((c) => c.defaultSharePct > 0);
@@ -97,9 +97,10 @@ export async function applyStarterPlan(raw: { incomeCents: number; month?: strin
       });
     }
 
+    if (parsed.tithe) await ensureTitheGoal(viewer.household.id);
     await db
       .update(schema.households)
-      .set({ expectedIncomeCents: parsed.incomeCents, onboardedAt: new Date() })
+      .set({ expectedIncomeCents: parsed.incomeCents, onboardedAt: new Date(), ...(parsed.tithe ? { tithePct: TITHE_SHARE_PCT } : {}) })
       .where(eq(schema.households.id, viewer.household.id));
     revalidatePath("/", "layout");
     return { ok: true };

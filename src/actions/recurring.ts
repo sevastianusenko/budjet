@@ -7,6 +7,7 @@ import { getDb, schema } from "@/db";
 import { requireViewerForAction } from "@/lib/auth";
 import { dateInMonth, isValidMonth, monthOf } from "@/lib/dates";
 import { errorMessage, ownedCategory, ownedRecurring } from "@/lib/guards";
+import { syncTitheSetAside } from "@/lib/tithe";
 import type { ActionResult } from "./auth";
 
 const billSchema = z.object({
@@ -76,16 +77,20 @@ export async function markBillPaid(id: string, month: string): Promise<ActionRes
     });
     if (already) return { ok: false, error: `${bill.name} is already marked paid this month.` };
     const date = month === monthOf(viewer.today) ? viewer.today : dateInMonth(month, bill.dayOfMonth);
-    await db.insert(schema.transactions).values({
-      householdId: viewer.household.id,
-      userId: viewer.user.id,
-      categoryId: bill.categoryId,
-      recurringId: bill.id,
-      type: bill.type,
-      amountCents: bill.amountCents,
-      date,
-      note: bill.name,
-    });
+    const [row] = await db
+      .insert(schema.transactions)
+      .values({
+        householdId: viewer.household.id,
+        userId: viewer.user.id,
+        categoryId: bill.categoryId,
+        recurringId: bill.id,
+        type: bill.type,
+        amountCents: bill.amountCents,
+        date,
+        note: bill.name,
+      })
+      .returning();
+    if (row.type === "income") await syncTitheSetAside(viewer.household, row, bill.name);
     revalidatePath("/", "layout");
     return { ok: true };
   } catch (err) {

@@ -64,6 +64,8 @@ export interface GoalLite {
   monthlyPlanCents: number;
   deadline: ISODate | null;
   isEmergency: boolean;
+  /** The Tithe fund: income set-asides go in, giving comes out. Not savings. */
+  isTithe: boolean;
   startingCents: number;
   archived: boolean;
 }
@@ -107,12 +109,19 @@ export interface MonthSummary {
   needWantSpent: number;
   /** Spent in business categories: shown apart from the 50/30/20 split. */
   businessSpent: number;
-  /** Explicit savings: goal contributions (net) + spending in "savings" categories. */
+  /** Explicit savings: goal contributions (net, tithe fund excluded) + spending in "savings" categories. */
   savedExplicit: number;
+  /** Net contributions to savings goals (tithe fund excluded). */
   goalContributions: number;
+  /** Set aside into the Tithe fund this month (counted as a need). */
+  titheSetAside: number;
+  /** Given out of the Tithe fund this month (already counted when set aside). */
+  titheGiven: number;
   plannedExpenses: number;
   plannedSavingsCategories: number;
   plannedGoals: number;
+  /** tithePct × expected income. */
+  plannedTithe: number;
   /** Planned income (household setting) or, if unset, actual income this month. 0 if neither. */
   expectedIncome: number;
   /** expectedIncome - all plans. Zero-based check. null when no income reference exists. */
@@ -145,9 +154,15 @@ export interface MonthInput {
   goals: GoalLite[];
   expectedIncomeCents: number;
   targets: Targets;
+  /** Percent of income set aside into the Tithe fund (0 = off). */
+  tithePct?: number;
 }
 
 const sum = (ns: number[]) => ns.reduce((a, b) => a + b, 0);
+
+export function titheGoalIds(goals: Pick<GoalLite, "id" | "isTithe">[]): Set<string> {
+  return new Set(goals.filter((g) => g.isTithe).map((g) => g.id));
+}
 
 export function inMonth(tx: { date: string }, month: Month): boolean {
   return tx.date.startsWith(month);
@@ -240,8 +255,14 @@ export function summarizeMonth(input: MonthInput): MonthSummary {
   const businessSpent = groupSpent("business");
   // Expenses whose category was deleted count as "want" so nothing silently disappears.
   const orphanSpent = spent - needSpent - wantSpent - savingsCatSpent - businessSpent;
-  const needWantSpent = needSpent + wantSpent + orphanSpent;
-  const goalContributions = sum(mtx.filter((t) => t.type === "goal").map((t) => t.amountCents));
+  const titheIds = titheGoalIds(goals);
+  const goalTx = mtx.filter((t) => t.type === "goal");
+  const titheTx = goalTx.filter((t) => titheIds.has(t.goalId ?? ""));
+  const titheSetAside = sum(titheTx.filter((t) => t.amountCents > 0).map((t) => t.amountCents));
+  const titheGiven = -sum(titheTx.filter((t) => t.amountCents < 0).map((t) => t.amountCents));
+  const goalContributions = sum(goalTx.filter((t) => !titheIds.has(t.goalId ?? "")).map((t) => t.amountCents));
+  // Tithe set-asides are a commitment, so they count as needs the moment the money is reserved.
+  const needWantSpent = needSpent + wantSpent + orphanSpent + titheSetAside;
   const savedExplicit = savingsCatSpent + goalContributions;
 
   const memo = new Map<string, number>();
@@ -275,12 +296,13 @@ export function summarizeMonth(input: MonthInput): MonthSummary {
 
   const plannedExpenses = sum(rows.filter((r) => r.cat.group !== "savings").map((r) => r.planned));
   const plannedSavingsCategories = sum(rows.filter((r) => r.cat.group === "savings").map((r) => r.planned));
-  const activeGoals = goals.filter((g) => !g.archived);
+  const activeGoals = goals.filter((g) => !g.archived && !g.isTithe);
   const plannedGoals = sum(activeGoals.map((g) => g.monthlyPlanCents));
 
   const expectedIncome = input.expectedIncomeCents > 0 ? input.expectedIncomeCents : income;
+  const plannedTithe = Math.round((expectedIncome * (input.tithePct ?? 0)) / 100);
   const unassigned =
-    expectedIncome > 0 ? expectedIncome - plannedExpenses - plannedSavingsCategories - plannedGoals : null;
+    expectedIncome > 0 ? expectedIncome - plannedExpenses - plannedSavingsCategories - plannedGoals - plannedTithe : null;
 
   const mode: MonthSummary["mode"] = plannedExpenses + plannedSavingsCategories > 0 ? "plan" : "cashflow";
 
@@ -291,7 +313,8 @@ export function summarizeMonth(input: MonthInput): MonthSummary {
     const overAllocated = unassigned !== null && unassigned < 0 ? unassigned : 0;
     safeToSpend = variableRemaining - fixedOverspend + overAllocated;
   } else {
-    safeToSpend = income - spent - goalContributions;
+    // Cash view: reserved tithe money is not spendable; giving from the fund spends the reserve, not this.
+    safeToSpend = income - spent - goalContributions - titheSetAside;
   }
   const safeToSpendPerDay = daysLeft > 0 ? Math.floor(safeToSpend / daysLeft) : 0;
 
@@ -321,7 +344,7 @@ export function summarizeMonth(input: MonthInput): MonthSummary {
     targetShare: targetPct / 100,
   });
   const split = {
-    need: part(needSpent, targets.needs),
+    need: part(needSpent + titheSetAside, targets.needs),
     want: part(wantSpent + orphanSpent, targets.wants),
     savings: part(savedExplicit + leftover, targets.savings),
   };
@@ -361,9 +384,12 @@ export function summarizeMonth(input: MonthInput): MonthSummary {
     businessSpent,
     savedExplicit,
     goalContributions,
+    titheSetAside,
+    titheGiven,
     plannedExpenses,
     plannedSavingsCategories,
     plannedGoals,
+    plannedTithe,
     expectedIncome,
     unassigned,
     mode,
@@ -480,7 +506,7 @@ export interface MonthPoint {
   savingsRate: number | null;
 }
 
-export function monthSeries(months: Month[], txs: TxLite[], cats: CatLite[]): MonthPoint[] {
+export function monthSeries(months: Month[], txs: TxLite[], cats: CatLite[], titheIds: Set<string> = new Set()): MonthPoint[] {
   const catById = new Map(cats.map((c) => [c.id, c]));
   return months.map((month) => {
     const mtx = txs.filter((t) => inMonth(t, month));
@@ -499,8 +525,12 @@ export function monthSeries(months: Month[], txs: TxLite[], cats: CatLite[]): Mo
     };
     for (const t of mtx) {
       if (t.type === "income") point.income += t.amountCents;
-      else if (t.type === "goal") point.goalContributions += t.amountCents;
-      else {
+      else if (t.type === "goal") {
+        // Tithe set-asides are a need; giving out of the fund was already counted.
+        if (titheIds.has(t.goalId ?? "")) {
+          if (t.amountCents > 0) point.need += t.amountCents;
+        } else point.goalContributions += t.amountCents;
+      } else {
         point.spent += t.amountCents;
         const g = catById.get(t.categoryId ?? "")?.group ?? "want";
         if (g === "need") point.need += t.amountCents;

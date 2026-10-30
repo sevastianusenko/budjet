@@ -24,6 +24,8 @@ export const households = pgTable("households", {
   expectedIncomeCents: integer("expected_income_cents").notNull().default(0),
   /** Which reference household to compare spending with (see lib/profiles.ts). */
   comparisonProfile: text("comparison_profile").notNull().default("us"),
+  /** Percent of every income set aside into the Tithe fund automatically. 0 = off. */
+  tithePct: integer("tithe_pct").notNull().default(0),
   /** Set once the owner finished (or skipped) onboarding. */
   onboardedAt: timestamp("onboarded_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -125,6 +127,8 @@ export const goals = pgTable(
     /** "YYYY-MM-DD" or null */
     deadline: text("deadline"),
     isEmergency: boolean("is_emergency").notNull().default(false),
+    /** The Tithe fund: filled by automatic set-asides from income, drawn down by giving. */
+    isTithe: boolean("is_tithe").notNull().default(false),
     /** Money already saved before tracking started, in cents. */
     startingCents: integer("starting_cents").notNull().default(0),
     sortOrder: integer("sort_order").notNull().default(0),
@@ -170,6 +174,8 @@ export const transactions = pgTable(
     subcategoryId: text("subcategory_id").references(() => subcategories.id, { onDelete: "set null" }),
     goalId: text("goal_id").references(() => goals.id, { onDelete: "set null" }),
     recurringId: text("recurring_id").references(() => recurring.id, { onDelete: "set null" }),
+    /** For automatic entries (a tithe set-aside): the income entry that produced it. */
+    parentId: text("parent_id"),
     type: text("type", { enum: ["expense", "income", "goal"] }).notNull(),
     /** Cents. Positive. For type "goal" a negative value is a withdrawal. */
     amountCents: integer("amount_cents").notNull(),
@@ -182,6 +188,7 @@ export const transactions = pgTable(
   (t) => [
     index("transactions_household_date_idx").on(t.householdId, t.date),
     index("transactions_household_category_idx").on(t.householdId, t.categoryId),
+    index("transactions_parent_idx").on(t.parentId),
   ],
 );
 

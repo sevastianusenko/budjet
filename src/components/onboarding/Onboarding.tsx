@@ -23,7 +23,7 @@ export function Onboarding({ name, householdName, inviteCode, done }: { name: st
     const scale = tithe ? (100 - TITHE_SHARE_PCT) / 100 : 1;
     const dollars = (pct: number) => Math.round((cents * pct * scale) / 100 / 100) * 100;
     const groups: Record<"need" | "want" | "savings", { name: string; icon: string; cents: number }[]> = { need: [], want: [], savings: [] };
-    if (tithe) groups.need.push({ name: "Tithe", icon: "Church", cents: Math.round((cents * TITHE_SHARE_PCT) / 100 / 100) * 100 });
+    if (tithe) groups.need.push({ name: "Tithe fund (10% of every income)", icon: "Church", cents: Math.round((cents * TITHE_SHARE_PCT) / 100 / 100) * 100 });
     for (const c of DEFAULT_CATEGORIES) {
       if (c.defaultSharePct <= 0 || c.kind !== "expense" || c.group === "business" || c.group === "income") continue;
       groups[c.group as "need" | "want" | "savings"].push({ name: c.name, icon: c.icon, cents: dollars(c.defaultSharePct) });
@@ -77,7 +77,7 @@ export function Onboarding({ name, householdName, inviteCode, done }: { name: st
       </label>
 
       <div className="mt-4 rounded-2xl border border-line px-4">
-        <Toggle checked={tithe} onChange={setTithe} label="We tithe 10% of income" description="Adds a Tithe line first; everything else scales to 90%." />
+        <Toggle checked={tithe} onChange={setTithe} label="We tithe 10% of income" description="Every income you log sets 10% aside into a Tithe fund you give from; everything else scales to 90%." />
       </div>
 
       {cents > 0 && (

@@ -22,7 +22,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Sea
         members={data.members.map((m) => ({ id: m.id, name: m.name, color: m.color }))}
         categories={data.categories.map((c) => ({ id: c.id, name: c.name, icon: c.icon }))}
         subcategories={data.subcategories.map((s) => ({ id: s.id, name: s.name }))}
-        goals={data.goals.map((g) => ({ id: g.id, name: g.name, icon: g.icon }))}
+        goals={data.goals.map((g) => ({ id: g.id, name: g.name, icon: g.icon, isTithe: g.isTithe }))}
         today={viewer.today}
       />
     </div>

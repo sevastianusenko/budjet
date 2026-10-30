@@ -9,6 +9,7 @@ import { MembersList } from "@/components/settings/MembersList";
 import { PasswordForm } from "@/components/settings/PasswordForm";
 import { SignOutButton } from "@/components/settings/SignOutButton";
 import { SectionTitle } from "@/components/ui/Bits";
+import { ThemeToggle } from "@/components/settings/ThemeToggle";
 
 export const metadata = { title: "Settings" };
 
@@ -24,7 +25,7 @@ export default async function SettingsPage() {
       <section>
         <SectionTitle>Household</SectionTitle>
         <div className="space-y-3">
-          <HouseholdForm name={h.name} needsPct={h.needsPct} wantsPct={h.wantsPct} savingsPct={h.savingsPct} expectedIncomeCents={h.expectedIncomeCents} comparisonProfile={h.comparisonProfile} />
+          <HouseholdForm name={h.name} needsPct={h.needsPct} wantsPct={h.wantsPct} savingsPct={h.savingsPct} expectedIncomeCents={h.expectedIncomeCents} comparisonProfile={h.comparisonProfile} tithePct={h.tithePct} />
           <InviteCard code={h.inviteCode} />
         </div>
       </section>
@@ -40,6 +41,11 @@ export default async function SettingsPage() {
           <ProfileForm name={viewer.user.name} color={viewer.user.color} />
           <PasswordForm />
         </div>
+      </section>
+
+      <section>
+        <SectionTitle>Appearance</SectionTitle>
+        <ThemeToggle />
       </section>
 
       <section>

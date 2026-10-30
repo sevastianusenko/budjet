@@ -33,6 +33,7 @@ function GoalForm({ onClose, goal, today, monthlyNeeds }: FormProps) {
   const [deadline, setDeadline] = useState(goal?.deadline ?? "");
   const [starting, setStarting] = useState(goal ? centsToInput(goal.startingCents) : "");
   const [isEmergency, setIsEmergency] = useState(goal?.isEmergency ?? false);
+  const isTithe = goal?.isTithe ?? false;
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -51,6 +52,7 @@ function GoalForm({ onClose, goal, today, monthlyNeeds }: FormProps) {
         monthlyPlanCents: monthlyCents,
         deadline: deadline || null,
         isEmergency,
+        isTithe,
         startingCents: parseAmountToCents(starting) ?? 0,
       });
       if (!res.ok) return setError(res.error);
@@ -63,10 +65,10 @@ function GoalForm({ onClose, goal, today, monthlyNeeds }: FormProps) {
     <Sheet
       open
       onClose={onClose}
-      title={goal ? "Edit goal" : "New goal"}
+      title={isTithe ? "Tithe fund" : goal ? "Edit goal" : "New goal"}
       footer={
         <div className="flex gap-2">
-          {goal && (
+          {goal && !isTithe && (
             <Button
               variant="danger"
               disabled={pending}
@@ -112,6 +114,12 @@ function GoalForm({ onClose, goal, today, monthlyNeeds }: FormProps) {
           </div>
         </div>
 
+        {isTithe && (
+          <p className="text-sm text-ink-2">
+            The fund fills automatically from every income (percent in Settings). Use &quot;Already saved&quot; to set what&apos;s in the fund right now, for example cash you&apos;ve put aside before using Hearth.
+          </p>
+        )}
+        {!isTithe && (
         <div className="grid grid-cols-2 gap-3">
           <Field label="Target">
             <Input inputMode="decimal" className="num" value={target} onChange={(e) => setTarget(e.target.value)} placeholder="10,000" />
@@ -120,6 +128,7 @@ function GoalForm({ onClose, goal, today, monthlyNeeds }: FormProps) {
             <Input inputMode="decimal" className="num" value={monthly} onChange={(e) => setMonthly(e.target.value)} placeholder="300" />
           </Field>
         </div>
+        )}
         {monthsAtPlan !== null && monthsAtPlan > 0 && (
           <p className="-mt-2 text-xs text-ink-3">
             At {fmtMoney(monthlyCents, { whole: true })}/mo that&apos;s about {monthsAtPlan} month{monthsAtPlan === 1 ? "" : "s"}.
@@ -127,14 +136,17 @@ function GoalForm({ onClose, goal, today, monthlyNeeds }: FormProps) {
         )}
 
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Deadline (optional)">
-            <Input type="date" value={deadline} min={today} onChange={(e) => setDeadline(e.target.value)} />
-          </Field>
-          <Field label="Already saved">
+          {!isTithe && (
+            <Field label="Deadline (optional)">
+              <Input type="date" value={deadline} min={today} onChange={(e) => setDeadline(e.target.value)} />
+            </Field>
+          )}
+          <Field label={isTithe ? "Already in the fund" : "Already saved"}>
             <Input inputMode="decimal" className="num" value={starting} onChange={(e) => setStarting(e.target.value)} placeholder="0" />
           </Field>
         </div>
 
+        {!isTithe && (
         <Toggle
           checked={isEmergency}
           onChange={(v) => {
@@ -144,8 +156,9 @@ function GoalForm({ onClose, goal, today, monthlyNeeds }: FormProps) {
           label="This is our emergency fund"
           description={monthlyNeeds > 0 ? `Shows months of essentials covered (~${fmtMoney(monthlyNeeds, { whole: true })}/mo).` : "Shows how many months of essentials it covers."}
         />
+        )}
 
-        {goal && (
+        {goal && !isTithe && (
           <button
             type="button"
             className="text-sm font-medium text-ink-2 underline-offset-2 hover:underline"

@@ -6,12 +6,12 @@ import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { MemberDot } from "@/components/ui/Bits";
-import { ErrorText, inputClass } from "@/components/ui/Field";
+import { ErrorText, Toggle, inputClass } from "@/components/ui/Field";
 import { useToast } from "@/components/ui/Toast";
 import { addTransaction, deleteTransaction, restoreTransaction, updateTransaction } from "@/actions/transactions";
 import { addDays, dateLabel } from "@/lib/dates";
 import { centsToInput, fmtMoney } from "@/lib/money";
-import type { ShellCategory, ShellGoal, ShellMember, ShellSubcategory } from "@/components/shell/AppShell";
+import type { ShellCategory, ShellGoal, ShellMember, ShellSubcategory, ShellTitheFund } from "@/components/shell/AppShell";
 
 export type EntryType = "expense" | "income" | "goal";
 
@@ -21,6 +21,8 @@ export interface SheetDefaults {
   subcategoryId?: string;
   goalId?: string;
   date?: string;
+  /** Pre-select "paid from the Tithe fund". */
+  fromFund?: boolean;
 }
 
 export interface EditableTx {
@@ -42,6 +44,8 @@ interface FormProps {
   categories: ShellCategory[];
   subcategories: ShellSubcategory[];
   goals: ShellGoal[];
+  titheFund: ShellTitheFund | null;
+  tithePct: number;
   today: string;
   defaults?: SheetDefaults;
   edit?: EditableTx;
@@ -64,22 +68,31 @@ const GROUPS: { key: ShellCategory["group"]; label: string; dot: string }[] = [
 
 type Picker = "category" | "sub" | null;
 
-function EntryForm({ onClose, me, members, categories, subcategories, goals, today, defaults, edit }: FormProps) {
+function EntryForm({ onClose, me, members, categories, subcategories, goals, titheFund, tithePct, today, defaults, edit }: FormProps) {
   const toast = useToast();
   const [pending, start] = useTransition();
-  const [type, setType] = useState<EntryType>(edit?.type ?? defaults?.type ?? "expense");
+  // A giving entry paid out of the Tithe fund is stored as a fund withdrawal with a category; edit it as an expense.
+  const editIsFundGiving = Boolean(edit && titheFund && edit.type === "goal" && edit.goalId === titheFund.id && edit.amountCents < 0 && edit.categoryId);
+  const [type, setType] = useState<EntryType>(editIsFundGiving ? "expense" : edit?.type ?? defaults?.type ?? "expense");
   const [amount, setAmount] = useState(edit ? centsToInput(Math.abs(edit.amountCents)) : "");
-  const [withdraw, setWithdraw] = useState(edit ? edit.type === "goal" && edit.amountCents < 0 : false);
+  const [withdraw, setWithdraw] = useState(edit ? edit.type === "goal" && edit.amountCents < 0 && !editIsFundGiving : false);
   const [categoryId, setCategoryId] = useState<string | null>(edit ? edit.categoryId : defaults?.categoryId ?? null);
   const [subcategoryId, setSubcategoryId] = useState<string | null>(edit ? edit.subcategoryId : defaults?.subcategoryId ?? null);
-  const [goalId, setGoalId] = useState<string | null>(edit ? edit.goalId : defaults?.goalId ?? null);
+  const [goalId, setGoalId] = useState<string | null>(edit ? (editIsFundGiving ? null : edit.goalId) : defaults?.goalId ?? null);
   const [date, setDate] = useState(edit?.date ?? defaults?.date ?? today);
   const [note, setNote] = useState(edit?.note ?? "");
   const [paidBy, setPaidBy] = useState(edit?.userId ?? me.id);
   const [error, setError] = useState<string | null>(null);
   const [showNote, setShowNote] = useState(Boolean(edit?.note));
+  const [fromFund, setFromFund] = useState<boolean>(() => {
+    if (!titheFund) return false;
+    if (edit) return editIsFundGiving;
+    if (defaults?.fromFund !== undefined) return defaults.fromFund;
+    return categories.find((c) => c.id === defaults?.categoryId)?.name === "Tithe";
+  });
 
-  const subsFor = (catId: string | null) => subcategories.filter((s) => s.categoryId === catId && (!s.archived || s.id === subcategoryId)).sort((a, b) => b.uses - a.uses || a.name.localeCompare(b.name));
+  const subsFor = (catId: string | null) =>
+    subcategories.filter((s) => s.categoryId === catId && (!s.archived || s.id === subcategoryId)).sort((a, b) => b.uses - a.uses || a.name.localeCompare(b.name));
 
   // Picking is the first step for a new entry; it collapses once something is chosen.
   const [picker, setPicker] = useState<Picker>(() => {
@@ -95,7 +108,7 @@ function EntryForm({ onClose, me, members, categories, subcategories, goals, tod
     () => categories.filter((c) => c.kind === kind && (!c.archived || c.id === categoryId)).sort((a, b) => b.uses - a.uses),
     [categories, kind, categoryId],
   );
-  const activeGoals = goals.filter((g) => !g.archived || g.id === goalId);
+  const activeGoals = goals.filter((g) => !g.isTithe && (!g.archived || g.id === goalId));
   const selectedCat = cats.find((c) => c.id === categoryId) ?? null;
   const selectedSub = subcategories.find((s) => s.id === subcategoryId) ?? null;
   const selectedGoal = activeGoals.find((g) => g.id === goalId) ?? null;
@@ -113,6 +126,7 @@ function EntryForm({ onClose, me, members, categories, subcategories, goals, tod
     } else {
       setCategoryId(null);
       setSubcategoryId(null);
+      setFromFund(false);
       setPicker("category");
     }
   }
@@ -121,6 +135,7 @@ function EntryForm({ onClose, me, members, categories, subcategories, goals, tod
     setCategoryId(id);
     setSubcategoryId(null);
     setError(null);
+    if (titheFund && type === "expense" && !edit) setFromFund(categories.find((c) => c.id === id)?.name === "Tithe");
     setPicker(subsFor(id).some((s) => !s.archived) ? "sub" : null);
   }
 
@@ -147,24 +162,35 @@ function EntryForm({ onClose, me, members, categories, subcategories, goals, tod
       return setError("Pick a goal.");
     }
     if (!cents) return setError("Enter an amount.");
-    const payload = {
-      type,
-      amountCents: type === "goal" && withdraw ? -cents : cents,
-      date,
-      categoryId: type === "goal" ? null : categoryId,
-      subcategoryId: type === "goal" ? null : subcategoryId,
-      goalId: type === "goal" ? goalId : null,
-      note,
-      userId: paidBy,
-    };
+    const giving = type === "expense" && fromFund && titheFund;
+    const payload = giving
+      ? { type: "goal" as const, amountCents: -cents, date, categoryId, subcategoryId, goalId: titheFund.id, note, userId: paidBy }
+      : {
+          type,
+          amountCents: type === "goal" && withdraw ? -cents : cents,
+          date,
+          categoryId: type === "goal" ? null : categoryId,
+          subcategoryId: type === "goal" ? null : subcategoryId,
+          goalId: type === "goal" ? goalId : null,
+          note,
+          userId: paidBy,
+        };
     start(async () => {
       const res = edit ? await updateTransaction(edit.id, payload) : await addTransaction(payload);
       if (!res.ok) return setError(res.error);
       onClose();
-      const label =
-        type === "income" ? "Income added" : type === "goal" ? (withdraw ? "Withdrawal saved" : "Saved to goal") : "Expense added";
+      const label = giving
+        ? "Given from the Tithe fund"
+        : type === "income"
+          ? "Income added"
+          : type === "goal"
+            ? withdraw
+              ? "Withdrawal saved"
+              : "Saved to goal"
+            : "Expense added";
+      const extra = !edit && type === "income" && res.setAside ? ` · ${fmtMoney(res.setAside, { whole: true })} set aside for tithe` : "";
       toast({
-        message: edit ? "Entry updated" : `${label} · ${fmtMoney(cents)}`,
+        message: edit ? "Entry updated" : `${label} · ${fmtMoney(cents)}${extra}`,
         action: edit
           ? undefined
           : {
@@ -206,6 +232,7 @@ function EntryForm({ onClose, me, members, categories, subcategories, goals, tod
           ? `${selectedCat.name} · ${selectedSub.name}`
           : selectedCat.name
         : "Choose a category";
+  const fundShort = titheFund ? titheFund.balance - (edit && editIsFundGiving ? 0 : 0) : 0;
 
   return (
     <Sheet
@@ -221,7 +248,7 @@ function EntryForm({ onClose, me, members, categories, subcategories, goals, tod
             )}
             <Button className="flex-1" size="lg" onClick={submit} disabled={pending}>
               <Check size={20} />
-              {edit ? "Save changes" : type === "goal" ? (withdraw ? "Withdraw" : "Add to goal") : "Save"}
+              {edit ? "Save changes" : type === "expense" && fromFund && titheFund ? "Give from fund" : type === "goal" ? (withdraw ? "Withdraw" : "Add to goal") : "Save"}
             </Button>
           </div>
         )
@@ -337,6 +364,11 @@ function EntryForm({ onClose, me, members, categories, subcategories, goals, tod
                   {withdraw ? "Switch to adding money" : "Taking money out instead?"}
                 </button>
               )}
+              {type === "income" && tithePct > 0 && titheFund && cents > 0 && (
+                <p className="mt-2 text-xs text-ink-3">
+                  {tithePct}% · {fmtMoney(Math.round((cents * tithePct) / 100))} goes to the Tithe fund automatically
+                </p>
+              )}
             </div>
 
             <div className="flex gap-2">
@@ -362,6 +394,21 @@ function EntryForm({ onClose, me, members, categories, subcategories, goals, tod
                 </button>
               )}
             </div>
+
+            {type === "expense" && titheFund && (
+              <div className="mt-2 rounded-2xl border border-line px-4">
+                <Toggle
+                  checked={fromFund}
+                  onChange={setFromFund}
+                  label="Paid from the Tithe fund"
+                  description={
+                    fromFund
+                      ? `Fund has ${fmtMoney(fundShort, { whole: true })}. This won't count as new spending.`
+                      : "Off = paid from our own money (counts as spending)."
+                  }
+                />
+              </div>
+            )}
 
             <div className="mt-3 grid grid-cols-3 gap-2">
               {KEYS.map((k) => (

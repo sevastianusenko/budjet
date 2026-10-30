@@ -33,8 +33,9 @@
   --shadow-sheet: 0 -8px 40px -12px rgb(21 32 26 / 0.3);
 }
 
+/* Dark: follows the device unless the viewer picked a theme in Settings (data-theme cookie). */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     color-scheme: dark;
     --paper: #0e1411;
     --card: #171e1a;
@@ -63,6 +64,34 @@
     --shadow-sheet: 0 -8px 40px -12px rgb(0 0 0 / 0.6);
   }
 }
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #0e1411;
+    --card: #171e1a;
+    --card-2: #1f2822;
+    --ink: #e8eee9;
+    --ink-2: #a6b3ab;
+    --ink-3: #727f78;
+    --line: #27322b;
+    --line-strong: #35433b;
+
+    --green: #5fb893;
+    --green-ink: #0b1a14;
+    --green-soft: #1a3a2e;
+    --green-text: #8ed3b5;
+
+    --over: #f0725f;
+    --over-soft: #3c1f1a;
+    --warn: #e0a83a;
+    --warn-soft: #3b2e14;
+
+    --need: #3987e5;
+    --want: #d95926;
+    --save: #199e70;
+
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -16px rgb(0 0 0 / 0.5);
+    --shadow-sheet: 0 -8px 40px -12px rgb(0 0 0 / 0.6);
+  }
 
 @theme inline {
   --color-paper: var(--paper);

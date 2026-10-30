@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
+import { cookies } from "next/headers";
 import { TimezoneCookie } from "@/components/shell/TimezoneCookie";
 
 const bricolage = Bricolage_Grotesque({
@@ -41,9 +42,11 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const theme = (await cookies()).get("theme")?.value;
+  const forced = theme === "light" || theme === "dark" ? theme : undefined;
   return (
-    <html lang="en" className={`${bricolage.variable} ${plex.variable} ${plexMono.variable} h-full antialiased`}>
+    <html lang="en" data-theme={forced} className={`${bricolage.variable} ${plex.variable} ${plexMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <TimezoneCookie />
         {children}

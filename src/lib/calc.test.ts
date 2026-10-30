@@ -3,6 +3,7 @@ import {
   avgMonthlyNeeds,
   carryFor,
   categoryBreakdown,
+  titheGoalIds,
   emergencyMonths,
   goalProgress,
   monthSeries,
@@ -217,6 +218,7 @@ describe("goals", () => {
     monthlyPlanCents: 50000,
     deadline: "2027-01-31",
     isEmergency: true,
+    isTithe: false,
     startingCents: 200000,
     archived: false,
   };
@@ -309,5 +311,53 @@ describe("business group and subcategory breakdown", () => {
     const pts = monthSeries(["2026-09"], txs, allCats);
     expect(pts[0].business).toBe(40000);
     expect(pts[0].need).toBe(25000);
+  });
+});
+
+describe("tithe fund", () => {
+  const tithe: GoalLite = {
+    id: "tithe",
+    name: "Tithe fund",
+    icon: "Church",
+    targetCents: 0,
+    monthlyPlanCents: 0,
+    deadline: null,
+    isEmergency: false,
+    isTithe: true,
+    startingCents: 50000,
+    archived: false,
+  };
+  const txs: TxLite[] = [
+    tx({ type: "income", categoryId: "pay", amountCents: 300000, date: "2026-09-01" }),
+    tx({ type: "goal", goalId: "tithe", amountCents: 30000, date: "2026-09-01" }), // automatic set-aside
+    tx({ type: "goal", goalId: "tithe", amountCents: -20000, date: "2026-09-07", categoryId: "dine" }), // gave from the fund
+    tx({ type: "goal", goalId: "g1", amountCents: 10000, date: "2026-09-02" }), // a savings goal
+    tx({ categoryId: "groc", amountCents: 40000, date: "2026-09-05" }),
+  ];
+
+  it("counts set-asides as needs, giving from the fund is not spending", () => {
+    const s = summarizeMonth({ month: "2026-09", today: "2026-09-20", txs, cats, budgets: [], goals: [tithe], expectedIncomeCents: 300000, targets, tithePct: 10 });
+    expect(s.titheSetAside).toBe(30000);
+    expect(s.titheGiven).toBe(20000);
+    expect(s.goalContributions).toBe(10000);
+    expect(s.savedExplicit).toBe(10000);
+    expect(s.needWantSpent).toBe(70000);
+    expect(s.split.need.actual).toBe(70000);
+    expect(s.plannedTithe).toBe(30000);
+    expect(s.unassigned).toBe(270000);
+    expect(s.safeToSpend).toBe(300000 - 40000 - 10000 - 30000);
+    expect(s.savingsRate).toBeCloseTo((300000 - 70000) / 300000);
+  });
+
+  it("fund balance follows set-asides minus giving", () => {
+    const p = goalProgress(tithe, txs, "2026-09-20");
+    expect(p.saved).toBe(60000);
+    expect(p.contributedThisMonth).toBe(10000);
+  });
+
+  it("series puts set-asides under needs", () => {
+    const pts = monthSeries(["2026-09"], txs, cats, titheGoalIds([tithe]));
+    expect(pts[0].need).toBe(70000);
+    expect(pts[0].goalContributions).toBe(10000);
   });
 });

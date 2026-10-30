@@ -68,6 +68,7 @@ export const DEFAULT_SUBCATEGORIES: Record<string, string[]> = {
   "Shopping & Clothing": ["Clothes & shoes", "Electronics", "Home goods"],
   Subscriptions: ["Streaming", "Software & apps", "Memberships"],
   "Gifts & Giving": ["Gifts", "Charity"],
+  Tithe: ["Church", "Helping someone", "Missions"],
   "Kids & Pets": ["Activities & sports", "Clothes & gear", "Pets"],
   Business: ["Websites", "Auto repair", "Supplies & tools", "Fees & other"],
 };

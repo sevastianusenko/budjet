@@ -15,6 +15,9 @@ import { InsightCards } from "@/components/home/InsightCards";
 import { CategoryPulse } from "@/components/home/CategoryPulse";
 import { UpcomingBills } from "@/components/home/UpcomingBills";
 import { RecentActivity } from "@/components/home/RecentActivity";
+import { TitheFundCard } from "@/components/home/TitheFundCard";
+import { titheStats } from "@/lib/tithe-stats";
+import { titheDefaults, titheLabeler } from "@/lib/tithe-ui";
 
 export const metadata = { title: "Home" };
 
@@ -37,6 +40,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
     goals,
     expectedIncomeCents: viewer.household.expectedIncomeCents,
     targets: { needs: viewer.household.needsPct, wants: viewer.household.wantsPct, savings: viewer.household.savingsPct },
+    tithePct: viewer.household.tithePct,
   });
   const progress = goals.filter((g) => !g.archived).map((g) => goalProgress(g, txs, viewer.today));
   const ef = progress.find((p) => p.goal.isEmergency);
@@ -46,6 +50,9 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
 
   const members = data.members.map((m) => ({ id: m.id, name: m.name, color: m.color }));
   const details = buildCategoryDetails(summary, data.txs, txs, subs, members);
+  const titheGoal = goals.find((g) => g.isTithe && !g.archived);
+  const tithe = titheGoal ? titheStats(titheGoal, txs, viewer.today, month, titheLabeler(data.categories, data.subcategories)) : null;
+  const titheDefs = titheDefaults(data.categories, data.subcategories);
 
   return (
     <div className="space-y-5">
@@ -72,6 +79,8 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
       <PulseStrip summary={summary} members={members} />
 
       <SplitBar summary={summary} />
+
+      {tithe && <TitheFundCard stats={tithe} tithePct={viewer.household.tithePct} churchDefaults={titheDefs.church} helpDefaults={titheDefs.help} compact />}
 
       {insights.length > 0 && <InsightCards insights={insights} />}
 

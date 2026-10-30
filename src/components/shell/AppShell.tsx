@@ -35,6 +35,12 @@ export interface ShellGoal {
   name: string;
   icon: string;
   archived: boolean;
+  isTithe: boolean;
+}
+export interface ShellTitheFund {
+  id: string;
+  /** Current fund balance in cents. */
+  balance: number;
 }
 
 interface AddSheetApi {
@@ -59,6 +65,8 @@ export function AppShell({
   categories,
   subcategories,
   goals,
+  titheFund,
+  tithePct,
   today,
   children,
 }: {
@@ -67,6 +75,8 @@ export function AppShell({
   categories: ShellCategory[];
   subcategories: ShellSubcategory[];
   goals: ShellGoal[];
+  titheFund: ShellTitheFund | null;
+  tithePct: number;
   today: string;
   children: ReactNode;
 }) {
@@ -129,6 +139,8 @@ export function AppShell({
           categories={categories}
           subcategories={subcategories}
           goals={goals}
+          titheFund={titheFund}
+          tithePct={tithePct}
           today={today}
           defaults={sheet.defaults}
           edit={sheet.edit}

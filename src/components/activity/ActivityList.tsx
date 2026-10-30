@@ -22,7 +22,7 @@ export function ActivityList({
   members: { id: string; name: string; color: string }[];
   categories: { id: string; name: string; icon: string }[];
   subcategories: { id: string; name: string }[];
-  goals: { id: string; name: string; icon: string }[];
+  goals: { id: string; name: string; icon: string; isTithe?: boolean }[];
   today: string;
 }) {
   const [filter, setFilter] = useState<Filter>("all");
@@ -71,7 +71,7 @@ export function ActivityList({
       <div className="grid grid-cols-3 gap-2">
         <Stat label="In" cents={totals.income} cls="text-green-text" />
         <Stat label="Out" cents={totals.expense} cls="text-ink" />
-        <Stat label="To goals" cents={totals.goal} cls="text-save" />
+        <Stat label="Set aside" cents={totals.goal} cls="text-save" />
       </div>
 
       <div className="space-y-2">

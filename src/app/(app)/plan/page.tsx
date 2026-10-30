@@ -23,6 +23,7 @@ export default async function PlanPage({ searchParams }: { searchParams: SearchP
     goals: data.goals.map(toGoalLite),
     expectedIncomeCents: viewer.household.expectedIncomeCents,
     targets: { needs: viewer.household.needsPct, wants: viewer.household.wantsPct, savings: viewer.household.savingsPct },
+    tithePct: viewer.household.tithePct,
   });
   const prevHasPlan = data.budgets.some((b) => b.month === addMonths(month, -1) && b.plannedCents > 0);
   const members = data.members.map((m) => ({ id: m.id, name: m.name, color: m.color }));
@@ -44,6 +45,9 @@ export default async function PlanPage({ searchParams }: { searchParams: SearchP
         details={details}
         goals={data.goals.filter((g) => !g.archived).map((g) => ({ id: g.id, name: g.name, icon: g.icon, monthlyPlanCents: g.monthlyPlanCents }))}
         goalContributions={summary.goalContributions}
+        plannedTithe={summary.plannedTithe}
+        titheSetAside={summary.titheSetAside}
+        tithePct={viewer.household.tithePct}
         prevHasPlan={prevHasPlan}
       />
     </div>

@@ -15,6 +15,7 @@ export function HouseholdForm(props: {
   savingsPct: number;
   expectedIncomeCents: number;
   comparisonProfile: string;
+  tithePct: number;
 }) {
   const toast = useToast();
   const [pending, start] = useTransition();
@@ -24,6 +25,7 @@ export function HouseholdForm(props: {
   const [wants, setWants] = useState(props.wantsPct);
   const [savings, setSavings] = useState(props.savingsPct);
   const [profile, setProfile] = useState(props.comparisonProfile);
+  const [tithe, setTithe] = useState(props.tithePct);
   const [error, setError] = useState<string | null>(null);
   const sum = needs + wants + savings;
   const chosen = PROFILES[profile];
@@ -42,6 +44,7 @@ export function HouseholdForm(props: {
             savingsPct: savings,
             expectedIncomeCents: income.trim() ? parseAmountToCents(income) ?? 0 : 0,
             comparisonProfile: profile,
+            tithePct: tithe,
           });
           if (!res.ok) return setError(res.error);
           toast({ message: "Household saved" });
@@ -80,6 +83,25 @@ export function HouseholdForm(props: {
         </div>
         <p className={`mt-1.5 text-xs ${sum === 100 ? "text-ink-3" : "text-over"}`}>
           {sum === 100 ? "Adds up to 100%. The classic rule is 50/30/20; 60/20/20 fits high-rent areas." : `Adds up to ${sum}%. Make it 100%.`}
+        </p>
+      </div>
+      <div>
+        <span className="mb-1.5 block text-[13px] font-medium text-ink-2">Tithe · set aside from every income</span>
+        <div className="relative w-32">
+          <input
+            type="number"
+            min={0}
+            max={50}
+            value={tithe}
+            onChange={(e) => setTithe(Math.max(0, Math.min(50, Number(e.target.value) || 0)))}
+            className="num h-11 w-full rounded-xl border border-line bg-card px-3 pr-7 text-[16px] focus:border-green focus:outline-none"
+          />
+          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-ink-3">%</span>
+        </div>
+        <p className="mt-1.5 text-xs text-ink-3">
+          {tithe > 0
+            ? `Every income you log moves ${tithe}% into the Tithe fund. Giving to church or helping someone comes out of the fund; the balance is always visible on Home and Goals.`
+            : "0% = off. Set 10% to reserve a tenth of every income in a Tithe fund you give from."}
         </p>
       </div>
       <Field label="Compare our spending with" hint={chosen ? `${chosen.source}, ${chosen.year}. Average of ${chosen.persons} people per household.` : undefined}>

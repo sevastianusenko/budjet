@@ -1,6 +1,6 @@
 import { requireViewer } from "@/lib/auth";
 import { loadHousehold, resolveMonth, toCatLite, toGoalLite, toSubLite, toTxLite, type SearchParams } from "@/lib/queries";
-import { avgMonthlyNeeds, emergencyMonths, goalProgress, monthSeries, summarizeMonth } from "@/lib/calc";
+import { avgMonthlyNeeds, emergencyMonths, goalProgress, monthSeries, summarizeMonth, titheGoalIds } from "@/lib/calc";
 import { buildCategoryDetails } from "@/lib/details";
 import { buildInsights } from "@/lib/insights";
 import { lastMonths, monthOf } from "@/lib/dates";
@@ -22,14 +22,14 @@ export default async function InsightsPage({ searchParams }: { searchParams: Sea
   const targets = { needs: viewer.household.needsPct, wants: viewer.household.wantsPct, savings: viewer.household.savingsPct };
   const profile = getProfile(viewer.household.comparisonProfile);
 
-  const summary = summarizeMonth({ month, today: viewer.today, txs, cats, budgets: data.budgets, goals, expectedIncomeCents: viewer.household.expectedIncomeCents, targets });
+  const summary = summarizeMonth({ month, today: viewer.today, txs, cats, budgets: data.budgets, goals, expectedIncomeCents: viewer.household.expectedIncomeCents, targets, tithePct: viewer.household.tithePct });
   const progress = goals.filter((g) => !g.archived).map((g) => goalProgress(g, txs, viewer.today));
   const ef = progress.find((p) => p.goal.isEmergency);
   const efMonths = ef ? emergencyMonths(ef.saved, avgMonthlyNeeds(txs, cats, viewer.today, data.budgets)) : null;
   const insights = buildInsights({ summary, goals: progress, emergencyMonths: efMonths, catName: (id) => data.categories.find((c) => c.id === id)?.name ?? "" });
 
   // Trend window: 12 months ending at the selected month, trimmed to months that have any data.
-  const series = monthSeries(lastMonths(month, 12), txs, cats);
+  const series = monthSeries(lastMonths(month, 12), txs, cats, titheGoalIds(goals));
   const firstWithData = series.findIndex((p) => p.income > 0 || p.spent > 0 || p.goalContributions > 0);
   const trend = (firstWithData === -1 ? series.slice(-1) : series.slice(Math.max(0, Math.min(firstWithData, series.length - 3)))).map((p) => ({
     month: p.month,

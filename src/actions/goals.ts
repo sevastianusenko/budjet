@@ -13,10 +13,11 @@ const goalSchema = z.object({
   id: z.string().optional(),
   name: z.string().trim().min(1, "Name the goal.").max(60),
   icon: z.string().min(1).max(40),
-  targetCents: z.number().int().min(100, "Set a target amount."),
+  targetCents: z.number().int().min(0),
   monthlyPlanCents: z.number().int().min(0),
   deadline: z.string().refine(isValidISODate, "Pick a valid date.").nullable(),
   isEmergency: z.boolean(),
+  isTithe: z.boolean().optional(),
   startingCents: z.number().int().min(0),
 });
 
@@ -27,6 +28,7 @@ export async function saveGoal(raw: unknown): Promise<ActionResult> {
     const parsed = goalSchema.safeParse(raw);
     if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
     const input = parsed.data;
+    if (!input.isTithe && input.targetCents < 100) return { ok: false, error: "Set a target amount." };
     const { household } = await requireViewerForAction();
     const db = await getDb();
     const values = {

@@ -103,6 +103,7 @@ export function toGoalLite(g: schema.Goal): GoalLite {
     monthlyPlanCents: g.monthlyPlanCents,
     deadline: g.deadline,
     isEmergency: g.isEmergency,
+    isTithe: g.isTithe,
     startingCents: g.startingCents,
     archived: g.archived,
   };

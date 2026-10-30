@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/shell/AppShell";
 import { requireViewer } from "@/lib/auth";
-import { loadHousehold } from "@/lib/queries";
+import { goalProgress } from "@/lib/calc";
+import { loadHousehold, toGoalLite, toTxLite } from "@/lib/queries";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const viewer = await requireViewer();
@@ -14,6 +15,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     if (t.categoryId) uses.set(t.categoryId, (uses.get(t.categoryId) ?? 0) + 1);
     if (t.subcategoryId) subUses.set(t.subcategoryId, (subUses.get(t.subcategoryId) ?? 0) + 1);
   }
+  const titheGoal = data.goals.find((g) => g.isTithe && !g.archived);
+  const titheFund = titheGoal
+    ? { id: titheGoal.id, balance: goalProgress(toGoalLite(titheGoal), data.txs.map(toTxLite), viewer.today).saved }
+    : null;
 
   return (
     <AppShell
@@ -35,7 +40,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         archived: s.archived,
         uses: subUses.get(s.id) ?? 0,
       }))}
-      goals={data.goals.map((g) => ({ id: g.id, name: g.name, icon: g.icon, archived: g.archived }))}
+      goals={data.goals.map((g) => ({ id: g.id, name: g.name, icon: g.icon, archived: g.archived, isTithe: g.isTithe }))}
+      titheFund={titheFund}
+      tithePct={viewer.household.tithePct}
       today={viewer.today}
     >
       {children}

@@ -1,10 +1,17 @@
 "use client";
 
-import type { Category, Goal, Transaction } from "@/db/schema";
+import type { Category, Transaction } from "@/db/schema";
 import { dateLabel } from "@/lib/dates";
 import { Icon } from "@/components/ui/Icon";
 import { MemberDot, Money } from "@/components/ui/Bits";
 import { useAddSheet } from "@/components/shell/AppShell";
+
+export interface RowGoal {
+  id: string;
+  name: string;
+  icon: string;
+  isTithe?: boolean;
+}
 
 export function TxRow({
   tx,
@@ -19,7 +26,7 @@ export function TxRow({
   members: { id: string; name: string; color: string }[];
   categories: Pick<Category, "id" | "name" | "icon">[];
   subcategories?: { id: string; name: string }[];
-  goals: Pick<Goal, "id" | "name" | "icon">[];
+  goals: RowGoal[];
   today: string;
   showDate?: boolean;
 }) {
@@ -28,11 +35,27 @@ export function TxRow({
   const cat = tx.categoryId ? categories.find((c) => c.id === tx.categoryId) : undefined;
   const sub = tx.subcategoryId ? subcategories.find((s) => s.id === tx.subcategoryId) : undefined;
   const goal = tx.goalId ? goals.find((g) => g.id === tx.goalId) : undefined;
-  const title = tx.type === "goal" ? goal?.name ?? "Goal" : cat?.name ?? "Uncategorized";
-  const icon = tx.type === "goal" ? goal?.icon ?? "PiggyBank" : cat?.icon ?? "Tag";
+  const fundGiving = tx.type === "goal" && goal?.isTithe && tx.amountCents < 0;
+  const setAside = tx.type === "goal" && goal?.isTithe && tx.amountCents > 0;
+
+  const title = fundGiving ? cat?.name ?? "Giving" : tx.type === "goal" ? goal?.name ?? "Goal" : cat?.name ?? "Uncategorized";
+  const icon = fundGiving ? cat?.icon ?? "Church" : tx.type === "goal" ? goal?.icon ?? "PiggyBank" : cat?.icon ?? "Tag";
   const amountCls =
-    tx.type === "income" ? "text-green-text" : tx.type === "goal" ? (tx.amountCents < 0 ? "text-over" : "text-save") : "text-ink";
-  const meta = [showDate ? dateLabel(tx.date, today) : null, tx.note || null].filter(Boolean).join(" · ");
+    tx.type === "income"
+      ? "text-green-text"
+      : fundGiving
+        ? "text-ink-2"
+        : tx.type === "goal"
+          ? tx.amountCents < 0
+            ? "text-over"
+            : setAside
+              ? "text-ink-2"
+              : "text-save"
+          : "text-ink";
+  const meta = [showDate ? dateLabel(tx.date, today) : null, fundGiving ? "from Tithe fund" : setAside ? "set aside" : null, tx.note || null]
+    .filter(Boolean)
+    .join(" · ");
+  const shown = tx.type === "income" ? tx.amountCents : tx.type === "goal" ? tx.amountCents : -tx.amountCents;
 
   return (
     <li>
@@ -68,7 +91,7 @@ export function TxRow({
           </span>
           {meta && <span className="block truncate text-xs text-ink-3">{meta}</span>}
         </span>
-        <Money cents={tx.type === "income" ? tx.amountCents : tx.type === "goal" ? tx.amountCents : -tx.amountCents} signed className={`text-[15px] font-semibold ${amountCls}`} />
+        <Money cents={shown} signed className={`text-[15px] font-semibold ${amountCls}`} />
       </button>
     </li>
   );

@@ -11,6 +11,8 @@ import { Bar, Empty, Money, Pill } from "@/components/ui/Bits";
 import { Explain } from "@/components/ui/Explain";
 import { useAddSheet } from "@/components/shell/AppShell";
 import { GoalSheet } from "./GoalSheet";
+import { TitheFundCard } from "@/components/home/TitheFundCard";
+import type { TitheStats } from "@/lib/tithe-stats";
 
 export interface GoalItem {
   goal: GoalLite;
@@ -32,12 +34,20 @@ export function GoalsScreen({
   contributedThisMonth,
   monthlyNeeds,
   today,
+  tithe,
 }: {
   items: GoalItem[];
   plannedThisMonth: number;
   contributedThisMonth: number;
   monthlyNeeds: number;
   today: string;
+  tithe: {
+    stats: TitheStats;
+    goal: GoalLite;
+    pct: number;
+    church: { categoryId?: string; subcategoryId?: string };
+    help: { categoryId?: string; subcategoryId?: string };
+  } | null;
 }) {
   const { openNew } = useAddSheet();
   const [editing, setEditing] = useState<GoalLite | null | "new">(null);
@@ -81,6 +91,21 @@ export function GoalsScreen({
           )}
         </p>
       </section>
+
+      {tithe && (
+        <div className="space-y-2">
+          <TitheFundCard stats={tithe.stats} tithePct={tithe.pct} churchDefaults={tithe.church} helpDefaults={tithe.help} />
+          <div className="flex items-center justify-between px-1 text-xs text-ink-3">
+            <span>
+              Given this year: <span className="num font-medium text-ink-2">{fmtMoney(tithe.stats.givenYear, { whole: true })}</span>
+              {tithe.stats.byLabelYear.length > 0 && <> · {tithe.stats.byLabelYear.map((r) => `${r.label} ${fmtMoney(r.cents, { whole: true })}`).join(", ")}</>}
+            </span>
+            <button type="button" onClick={() => setEditing(tithe.goal)} className="shrink-0 font-medium text-green-text">
+              Adjust balance
+            </button>
+          </div>
+        </div>
+      )}
 
       {active.length === 0 ? (
         <Empty

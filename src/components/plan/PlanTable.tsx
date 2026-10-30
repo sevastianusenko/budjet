@@ -36,6 +36,9 @@ export function PlanTable(props: {
   details: CategoryDetail[];
   goals: { id: string; name: string; icon: string; monthlyPlanCents: number }[];
   goalContributions: number;
+  plannedTithe: number;
+  titheSetAside: number;
+  tithePct: number;
   prevHasPlan: boolean;
 }) {
   const { month, status, targets } = props;
@@ -59,7 +62,7 @@ export function PlanTable(props: {
   const incomeRef = props.expectedIncome > 0 ? props.expectedIncome : props.actualIncome;
   const plannedTotal = rows.reduce((a, r) => a + r.planned, 0);
   const goalsPlanned = props.goals.reduce((a, g) => a + g.monthlyPlanCents, 0);
-  const unassigned = incomeRef - plannedTotal - goalsPlanned;
+  const unassigned = incomeRef - plannedTotal - goalsPlanned - props.plannedTithe;
   const hasPlan = plannedTotal > 0;
   const marker = status === "current" ? props.dayOfMonth / props.daysInMonth : null;
 
@@ -138,9 +141,11 @@ export function PlanTable(props: {
       {GROUPS.map((g) => {
         const groupRows = rows.filter((r) => r.group === g.key && (r.planned > 0 || r.spent > 0 || !isArchivedLike(r)));
         const isSavings = g.key === "savings";
-        if (groupRows.length === 0 && !(isSavings && props.goals.length > 0)) return null;
-        const groupPlanned = groupRows.reduce((a, r) => a + r.planned, 0) + (isSavings ? goalsPlanned : 0);
-        const groupSpent = groupRows.reduce((a, r) => a + r.spent, 0) + (isSavings ? props.goalContributions : 0);
+        const isNeeds = g.key === "need";
+        const showTithe = isNeeds && props.tithePct > 0;
+        if (groupRows.length === 0 && !(isSavings && props.goals.length > 0) && !showTithe) return null;
+        const groupPlanned = groupRows.reduce((a, r) => a + r.planned, 0) + (isSavings ? goalsPlanned : 0) + (showTithe ? props.plannedTithe : 0);
+        const groupSpent = groupRows.reduce((a, r) => a + r.spent, 0) + (isSavings ? props.goalContributions : 0) + (showTithe ? props.titheSetAside : 0);
         const share = incomeRef > 0 ? groupPlanned / incomeRef : null;
         const target = g.targetKey ? targets[g.targetKey] / 100 : null;
         return (
@@ -160,6 +165,29 @@ export function PlanTable(props: {
               </span>
             </div>
             <ul className="divide-y divide-line rounded-card bg-card shadow-card">
+              {showTithe && (
+                <li className="flex items-center gap-3 px-4 py-3">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-card-2 text-ink-2">
+                    <Icon name="Church" size={18} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate text-[15px] font-medium">Tithe fund</span>
+                      <span className="num shrink-0 text-[15px]">
+                        <span className="font-semibold text-ink">{fmtMoney(props.titheSetAside, { whole: true })}</span>
+                        <span className="text-ink-3"> / </span>
+                        <Link href="/settings" className="text-ink-2 underline decoration-dotted underline-offset-4">
+                          {fmtMoney(props.plannedTithe, { whole: true })}
+                        </Link>
+                      </span>
+                    </div>
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <Bar value={props.titheSetAside} max={props.plannedTithe} tone="green" className="flex-1" />
+                      <span className="num w-20 shrink-0 text-right text-xs text-ink-3">{props.tithePct}% of income</span>
+                    </div>
+                  </div>
+                </li>
+              )}
               {groupRows.map((r) => (
                 <PlanRowView key={r.id} row={r} marker={marker} status={status} onSave={(c) => save(r.id, c)} onOpen={() => setDetailId(r.id)} />
               ))}
