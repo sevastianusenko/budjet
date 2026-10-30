@@ -103,12 +103,12 @@ export function AppShell({
           type="button"
           onClick={() => api.openNew()}
           aria-label="Add entry"
-          className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-green text-green-ink shadow-[0_10px_30px_-8px_rgb(31_95_76/0.7)] transition-transform active:scale-95 sm:right-[calc(50%-15rem)]"
+          className="no-print fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-green text-green-ink shadow-[0_10px_30px_-8px_rgb(31_95_76/0.7)] transition-transform active:scale-95 sm:right-[calc(50%-15rem)]"
         >
           <Plus size={28} strokeWidth={2.5} />
         </button>
 
-        <nav className="pb-safe fixed inset-x-0 bottom-0 z-30 border-t border-line bg-card/95 backdrop-blur">
+        <nav className="no-print pb-safe fixed inset-x-0 bottom-0 z-30 border-t border-line bg-card/95 backdrop-blur">
           <ul className="mx-auto flex max-w-lg items-stretch justify-around">
             {TABS.map((t) => {
               const active = pathname === t.href || pathname.startsWith(t.href + "/");

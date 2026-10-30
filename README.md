@@ -17,7 +17,9 @@ Built for phones first, installable from the browser ("Add to Home Screen"), hos
 - **Insights** — plain-language, rule-based observations plus charts: income vs spending, savings rate, where the money went (with the typical U.S. household share for comparison), who logged what.
 - **Every number explains itself** — tap the ? next to it.
 - **Receipts**: copy the built-in prompt into ChatGPT (or any assistant) with a photo of the receipt, paste the answer, check the lines and save. Every item is kept: what was bought, how much, price per pound. Tap an entry to see its items; Receipts keeps the whole history.
-- **CSV export**, no bank linking, your own database.
+- **Past months in one go**: a prompt turns a bank export or your spreadsheet into Hearth's CSV in ChatGPT; import it with duplicate skipping and a one-tap undo.
+- **Reports**: month, quarter or year as a printable page (Print / Save as PDF) with the 50/30/20 check, category and subcategory totals, goals, who logged what, largest purchases; CSV export for any period.
+- No bank linking, your own database.
 
 ## Run locally
 

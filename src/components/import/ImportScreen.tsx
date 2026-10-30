@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState, useTransition } from "react";
-import { Check, ChevronLeft, ClipboardCopy, Plus, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, ClipboardCopy, FileSpreadsheet, Plus, X } from "lucide-react";
 import { importEntries } from "@/actions/import";
 import { describeItem, parseReceiptText, type MatchCategory, type MatchSub, type ParsedItem } from "@/lib/receipt-parse";
 import { fmtMoney, parseAmountToCents } from "@/lib/money";
@@ -123,7 +123,19 @@ export function ImportScreen({
         <h1 className="display text-2xl font-semibold tracking-tight">Import a receipt</h1>
       </div>
 
+      <Link href="/import/csv" className="flex items-center gap-3 rounded-card bg-card p-4 shadow-card hover:bg-card-2/60">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-card-2 text-ink-2">
+          <FileSpreadsheet size={20} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[15px] font-medium">Past months from the bank or a spreadsheet</span>
+          <span className="block text-xs text-ink-3">ChatGPT turns your export into a CSV; import it in one go, undo in one tap.</span>
+        </span>
+        <ChevronRight size={18} className="text-ink-3" />
+      </Link>
+
       <section className="rounded-card bg-card p-4 shadow-card">
+        <h2 className="mb-2 text-[13px] font-semibold uppercase tracking-wide text-ink-3">A receipt with every item</h2>
         <ol className="space-y-2 text-sm text-ink-2">
           <li>
             <span className="font-semibold text-ink">1.</span> Tap <strong className="font-semibold text-ink">Copy prompt</strong>. It already lists your categories and subcategories.

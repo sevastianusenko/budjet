@@ -9,6 +9,8 @@ import { getProfile, profileMonthlyCents, profileShare } from "@/lib/profiles";
 import { MonthSwitcher } from "@/components/shell/MonthSwitcher";
 import { InsightCards } from "@/components/home/InsightCards";
 import { InsightsScreen } from "@/components/insights/InsightsScreen";
+import Link from "next/link";
+import { FileText } from "lucide-react";
 
 export const metadata = { title: "Insights" };
 
@@ -87,7 +89,12 @@ export default async function InsightsPage({ searchParams }: { searchParams: Sea
 
   return (
     <div className="space-y-5">
-      <h1 className="display pt-2 text-2xl font-semibold tracking-tight">Insights</h1>
+      <div className="flex items-center justify-between pt-2">
+        <h1 className="display text-2xl font-semibold tracking-tight">Insights</h1>
+        <Link href={`/report?period=month&key=${month}`} className="flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-sm font-medium text-green-text hover:bg-card-2">
+          <FileText size={16} /> Report
+        </Link>
+      </div>
       <MonthSwitcher month={month} currentMonth={monthOf(viewer.today)} />
       {insights.length > 0 && <InsightCards insights={insights} title="What the numbers say" />}
       <InsightsScreen

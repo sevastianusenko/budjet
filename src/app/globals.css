@@ -215,3 +215,21 @@ input[type="number"]::-webkit-outer-spin-button {
 input[type="date"] {
   min-height: 2.75rem;
 }
+
+/* Printing a report: only the content, white paper, no app chrome. */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
+    color: #111 !important;
+  }
+  main {
+    padding: 0 !important;
+    max-width: none !important;
+  }
+  .break-inside-avoid {
+    break-inside: avoid;
+  }
+}

@@ -198,6 +198,8 @@ export const transactions = pgTable(
     parentId: text("parent_id"),
     /** Set when the entry is one line of an imported receipt. */
     receiptId: text("receipt_id").references(() => receipts.id, { onDelete: "set null" }),
+    /** Groups the rows of one CSV import so the whole batch can be undone. */
+    importBatch: text("import_batch"),
     type: text("type", { enum: ["expense", "income", "goal"] }).notNull(),
     /** Cents. Positive. For type "goal" a negative value is a withdrawal. */
     amountCents: integer("amount_cents").notNull(),
@@ -211,6 +213,7 @@ export const transactions = pgTable(
     index("transactions_household_date_idx").on(t.householdId, t.date),
     index("transactions_household_category_idx").on(t.householdId, t.categoryId),
     index("transactions_parent_idx").on(t.parentId),
+    index("transactions_import_batch_idx").on(t.importBatch),
   ],
 );
 
