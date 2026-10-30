@@ -611,3 +611,48 @@ export function starterPlan(
       plannedCents: Math.round((incomeCents * c.defaultSharePct) / 100 / 100) * 100,
     }));
 }
+
+/* ---------- Trend helpers for the Insights tab ---------- */
+
+export interface BalancePoint {
+  month: Month;
+  /** End-of-month balance per savings goal: starting amount + contributions dated up to that month. */
+  byGoal: Record<string, number>;
+  total: number;
+}
+
+/** Savings balance over time. The Tithe fund and archived goals are left out. */
+export function goalBalanceSeries(months: Month[], goals: GoalLite[], txs: TxLite[]): BalancePoint[] {
+  const live = goals.filter((g) => !g.isTithe && !g.archived);
+  const contributions = txs.filter((t) => t.type === "goal" && t.goalId !== null);
+  return months.map((month) => {
+    const byGoal: Record<string, number> = {};
+    let total = 0;
+    for (const g of live) {
+      const bal = g.startingCents + sum(contributions.filter((t) => t.goalId === g.id && monthOf(t.date) <= month).map((t) => t.amountCents));
+      byGoal[g.id] = bal;
+      total += bal;
+    }
+    return { month, byGoal, total };
+  });
+}
+
+export interface Mover {
+  categoryId: string;
+  before: number;
+  after: number;
+  delta: number;
+}
+
+/** Categories whose spending changed the most between two months, biggest absolute change first. */
+export function categoryMovers(before: MonthPoint, after: MonthPoint, minDelta = 2500): Mover[] {
+  const ids = new Set([...Object.keys(before.byCategory), ...Object.keys(after.byCategory)]);
+  return [...ids]
+    .map((categoryId) => {
+      const b = before.byCategory[categoryId] ?? 0;
+      const a = after.byCategory[categoryId] ?? 0;
+      return { categoryId, before: b, after: a, delta: a - b };
+    })
+    .filter((m) => Math.abs(m.delta) >= minDelta)
+    .sort((x, y) => Math.abs(y.delta) - Math.abs(x.delta));
+}

@@ -3,6 +3,8 @@ import {
   avgMonthlyNeeds,
   carryFor,
   categoryBreakdown,
+  categoryMovers,
+  goalBalanceSeries,
   titheGoalIds,
   emergencyMonths,
   goalProgress,
@@ -359,5 +361,50 @@ describe("tithe fund", () => {
     const pts = monthSeries(["2026-09"], txs, cats, titheGoalIds([tithe]));
     expect(pts[0].need).toBe(70000);
     expect(pts[0].goalContributions).toBe(10000);
+  });
+});
+
+describe("insights trends", () => {
+  const goal: GoalLite = {
+    id: "g1",
+    name: "Emergency",
+    icon: "PiggyBank",
+    targetCents: 1000000,
+    monthlyPlanCents: 50000,
+    deadline: null,
+    isEmergency: true,
+    isTithe: false,
+    startingCents: 200000,
+    archived: false,
+  };
+  const tithe: GoalLite = { ...goal, id: "tithe", name: "Tithe", isEmergency: false, isTithe: true, startingCents: 0 };
+  const txs = [
+    tx({ type: "goal", goalId: "g1", amountCents: 50000, date: "2026-08-05" }),
+    tx({ type: "goal", goalId: "g1", amountCents: 50000, date: "2026-09-05" }),
+    tx({ type: "goal", goalId: "g1", amountCents: -20000, date: "2026-09-20" }),
+    tx({ type: "goal", goalId: "tithe", amountCents: 30000, date: "2026-09-05" }),
+  ];
+
+  it("goal balance runs month by month and skips the tithe fund", () => {
+    const s = goalBalanceSeries(["2026-07", "2026-08", "2026-09"], [goal, tithe], txs);
+    expect(s.map((p) => p.total)).toEqual([200000, 250000, 280000]);
+    expect(s[2].byGoal.tithe).toBeUndefined();
+  });
+
+  it("category movers rank by absolute change and drop small ones", () => {
+    const [aug, sep] = monthSeries(
+      ["2026-08", "2026-09"],
+      [
+        tx({ categoryId: "groc", amountCents: 40000, date: "2026-08-10" }),
+        tx({ categoryId: "dine", amountCents: 10000, date: "2026-08-12" }),
+        tx({ categoryId: "groc", amountCents: 52000, date: "2026-09-10" }),
+        tx({ categoryId: "dine", amountCents: 9000, date: "2026-09-12" }),
+        tx({ categoryId: "trav", amountCents: 30000, date: "2026-09-15" }),
+      ],
+      cats,
+    );
+    const m = categoryMovers(aug, sep);
+    expect(m.map((x) => x.categoryId)).toEqual(["trav", "groc"]);
+    expect(m[0].delta).toBe(30000);
   });
 });

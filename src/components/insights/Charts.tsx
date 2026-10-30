@@ -1,8 +1,12 @@
 "use client";
 
 import {
+  Area,
+  AreaChart,
   Bar,
+  BarChart,
   CartesianGrid,
+  Cell,
   ComposedChart,
   Line,
   LineChart,
@@ -28,7 +32,17 @@ export interface TrendPoint {
 }
 
 const axisTick = { fontSize: 11, fill: "var(--ink-3)", fontFamily: "var(--font-plex-mono)" } as const;
-const compact = (c: number) => (c >= 100_000 ? `$${Math.round(c / 100_000)}k` : c > 0 ? `$${Math.round(c / 100)}` : "$0");
+const compact = (c: number) => {
+  if (c <= 0) return "$0";
+  if (c < 100_000) return `$${Math.round(c / 100)}`;
+  const k = c / 100_000;
+  return `$${k >= 10 ? Math.round(k) : Math.round(k * 10) / 10}k`;
+};
+const compactSigned = (c: number) => (c < 0 ? `−${compact(-c)}` : compact(c));
+
+/** Fixed hue order for goal bands: the emergency fund is always first and always green. */
+export const GOAL_SERIES_COLORS = ["var(--save)", "var(--need)", "var(--want)", "var(--warn)"];
+export const GOAL_OTHER_COLOR = "var(--ink-3)";
 
 function TooltipBox({ title, rows }: { title: string; rows: { label: string; value: string; color?: string }[] }) {
   return (
@@ -112,6 +126,103 @@ export function SavingsRateChart({ points, target }: { points: TrendPoint[]; tar
           />
           <Line type="monotone" dataKey="rate" stroke="var(--save)" strokeWidth={2} dot={{ r: 4, fill: "var(--save)", stroke: "var(--card)", strokeWidth: 2 }} activeDot={{ r: 6 }} connectNulls isAnimationActive={false} />
         </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+export interface KeptPoint {
+  month: string;
+  income: number;
+  spent: number;
+  /** income − needs − wants − business; null when no income was logged that month. */
+  kept: number | null;
+}
+
+/** One bar per month: green above the line when income beat spending, red below when it didn't. */
+export function KeptChart({ points }: { points: KeptPoint[] }) {
+  const data = points.map((p) => ({ ...p, label: monthLabel(p.month, "short") }));
+  return (
+    <div className="h-48 w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} margin={{ top: 8, right: 4, bottom: 0, left: 0 }} barCategoryGap="28%">
+          <CartesianGrid vertical={false} stroke="var(--line)" strokeWidth={1} />
+          <XAxis dataKey="label" tick={axisTick} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+          <YAxis tick={axisTick} axisLine={false} tickLine={false} tickFormatter={compactSigned} width={48} />
+          <ReferenceLine y={0} stroke="var(--line-strong)" strokeWidth={1} />
+          <Tooltip
+            cursor={{ fill: "var(--card-2)" }}
+            content={(p) => {
+              const d = p.payload?.[0]?.payload as (typeof data)[number] | undefined;
+              if (!p.active || !d) return null;
+              return (
+                <TooltipBox
+                  title={monthLabel(d.month)}
+                  rows={[
+                    { label: "Income", value: fmtMoney(d.income, { whole: true }), color: "var(--ink)" },
+                    { label: "Spent", value: fmtMoney(d.spent, { whole: true }), color: "var(--want)" },
+                    { label: "Kept", value: d.kept === null ? "no income logged" : fmtMoney(d.kept, { whole: true, signed: true }), color: d.kept !== null && d.kept < 0 ? "var(--over)" : "var(--save)" },
+                  ]}
+                />
+              );
+            }}
+          />
+          <Bar dataKey="kept" maxBarSize={24} radius={[4, 4, 0, 0]} isAnimationActive={false}>
+            {data.map((d) => (
+              <Cell key={d.month} fill={d.kept !== null && d.kept < 0 ? "var(--over)" : "var(--save)"} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+export interface BalanceSeriesPoint {
+  month: string;
+  byGoal: Record<string, number>;
+  total: number;
+}
+
+/** Stacked bands, one per goal (up to four, the rest folded into "Other"), so the total balance is the top edge. */
+export function SavingsBalanceChart({ points, goals }: { points: BalanceSeriesPoint[]; goals: { id: string; name: string }[] }) {
+  const shown = goals.slice(0, GOAL_SERIES_COLORS.length);
+  const rest = goals.slice(GOAL_SERIES_COLORS.length);
+  const data = points.map((p) => {
+    const row: Record<string, number | string> = { month: p.month, label: monthLabel(p.month, "short"), total: p.total };
+    for (const g of shown) row[g.id] = Math.max(0, p.byGoal[g.id] ?? 0);
+    if (rest.length) row.other = rest.reduce((a, g) => a + Math.max(0, p.byGoal[g.id] ?? 0), 0);
+    return row;
+  });
+  return (
+    <div className="h-48 w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={data} margin={{ top: 8, right: 4, bottom: 0, left: 0 }}>
+          <CartesianGrid vertical={false} stroke="var(--line)" strokeWidth={1} />
+          <XAxis dataKey="label" tick={axisTick} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+          <YAxis tick={axisTick} axisLine={false} tickLine={false} tickFormatter={compact} width={48} />
+          <Tooltip
+            cursor={{ stroke: "var(--line-strong)" }}
+            content={(p) => {
+              const d = p.payload?.[0]?.payload as (typeof data)[number] | undefined;
+              if (!p.active || !d) return null;
+              return (
+                <TooltipBox
+                  title={monthLabel(String(d.month))}
+                  rows={[
+                    ...shown.map((g, i) => ({ label: g.name, value: fmtMoney(Number(d[g.id] ?? 0), { whole: true }), color: GOAL_SERIES_COLORS[i] })),
+                    ...(rest.length ? [{ label: "Other goals", value: fmtMoney(Number(d.other ?? 0), { whole: true }), color: GOAL_OTHER_COLOR }] : []),
+                    { label: "Total", value: fmtMoney(Number(d.total), { whole: true }) },
+                  ]}
+                />
+              );
+            }}
+          />
+          {shown.map((g, i) => (
+            <Area key={g.id} type="monotone" dataKey={g.id} stackId="b" stroke="var(--card)" strokeWidth={1} fill={GOAL_SERIES_COLORS[i]} fillOpacity={0.9} isAnimationActive={false} />
+          ))}
+          {rest.length > 0 && <Area type="monotone" dataKey="other" stackId="b" stroke="var(--card)" strokeWidth={1} fill={GOAL_OTHER_COLOR} fillOpacity={0.9} isAnimationActive={false} />}
+        </AreaChart>
       </ResponsiveContainer>
     </div>
   );
