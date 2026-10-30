@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   // so the classic rendering model is simpler and predictable here.
   cacheComponents: false,
   serverExternalPackages: ["@electric-sql/pglite"],
+  experimental: { serverActions: { bodySizeLimit: "6mb" } },
   turbopack: {
     rules: {
       "*.css": {

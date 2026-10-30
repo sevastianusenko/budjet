@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
-import { Check, ChevronDown, Delete } from "lucide-react";
+import { Camera, Check, ChevronDown, Delete } from "lucide-react";
 import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
@@ -310,6 +311,11 @@ function EntryForm({ onClose, me, members, categories, subcategories, goals, tit
                 })}
                 {cats.length === 0 && <p className="text-sm text-ink-3">No categories yet. Add some in Settings.</p>}
               </div>
+            )}
+            {type === "expense" && !edit && (
+              <Link href="/import" onClick={onClose} className="mt-4 flex items-center justify-center gap-2 rounded-2xl border border-dashed border-line-strong px-4 py-3 text-sm font-medium text-ink-2 hover:bg-card-2">
+                <Camera size={16} /> Have a receipt? Scan or paste it
+              </Link>
             )}
             <div className="mt-3">
               <ErrorText>{error}</ErrorText>

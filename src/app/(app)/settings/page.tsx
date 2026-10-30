@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronRight, Download, ListTree, ReceiptText } from "lucide-react";
+import { Camera, ChevronRight, Download, ListTree, ReceiptText } from "lucide-react";
 import { requireViewer } from "@/lib/auth";
 import { loadHousehold } from "@/lib/queries";
 import { HouseholdForm } from "@/components/settings/HouseholdForm";
@@ -65,6 +65,13 @@ export default async function SettingsPage() {
               <ReceiptText size={20} className="text-ink-2" />
               <span className="flex-1 text-[15px] font-medium">Recurring bills</span>
               <span className="text-xs text-ink-3">{data.recurring.filter((r) => r.active).length}</span>
+              <ChevronRight size={18} className="text-ink-3" />
+            </Link>
+          </li>
+          <li>
+            <Link href="/import" className="flex items-center gap-3 px-4 py-3.5 hover:bg-card-2/60">
+              <Camera size={20} className="text-ink-2" />
+              <span className="flex-1 text-[15px] font-medium">Import a receipt (photo or paste)</span>
               <ChevronRight size={18} className="text-ink-3" />
             </Link>
           </li>
