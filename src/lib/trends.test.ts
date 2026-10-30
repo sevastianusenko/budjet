@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { monthSeries, type CatLite, type GoalLite, type TxLite } from "./calc";
-import { budgetVsActual, categoryTrends, fixedFlexSeries, givingSeries, incomeBySource, monthThroughDay, pieSlices, rulesOfThumb, subcategorySeries, windowTotals, yearReview } from "./trends";
+import { budgetVsActual, categoryTrends, dailyBalance, fixedFlexSeries, givingSeries, incomeBySource, monthThroughDay, pieSlices, rulesOfThumb, subcategorySeries, windowTotals, yearReview } from "./trends";
 import { comparePlan, getPlan } from "./plans";
 import { equivalence, PROFILES, referenceHousehold } from "./profiles";
 
@@ -90,6 +90,16 @@ describe("fixed vs flexible, income sources, year, budget", () => {
     const b = budgetVsActual(points.slice(0, 1), [{ categoryId: "rent", month: "2026-07", plannedCents: 180000 }, { categoryId: "biz", month: "2026-07", plannedCents: 99999 }], cats);
     expect(b[0].planned).toBe(180000);
     expect(b[0].spent).toBe(180000 + 80000 + 30000 + 5000);
+  });
+  it("daily balance runs income minus spending through a day, goal moves aside", () => {
+    const b = dailyBalance("2026-09", txs, cats, titheIds, 12);
+    expect(b.length).toBe(12);
+    expect(b[0]).toEqual({ day: 1, income: 600000, spent: 60000, saved: 0, net: 540000 }); // paycheck and the tithe set-aside
+    expect(b[4].saved).toBe(50000); // the emergency fund move on the 5th stays out of the balance
+    expect(b[11]).toEqual({ day: 12, income: 600000, spent: 355000, saved: 50000, net: 245000 });
+    const whole = dailyBalance("2026-09", txs, cats, titheIds);
+    expect(whole.length).toBe(30);
+    expect(whole[29].net).toBe(points[2].income - points[2].need - points[2].want - points[2].business);
   });
   it("month through a day only counts entries up to that day", () => {
     const p = monthThroughDay("2026-09", 5, txs, cats, titheIds);

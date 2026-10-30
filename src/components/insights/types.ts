@@ -1,6 +1,6 @@
 import type { Insight } from "@/lib/insights";
 import type { CategoryDetail } from "@/lib/details";
-import type { BudgetPoint, BusinessPoint, CategoryTrend, FixedFlexPoint, GivingPoint, IncomePoint, IncomeSource, PieSlice, Rule, SubSeries, WindowKey, YearPoint, YearTotals } from "@/lib/trends";
+import type { BudgetPoint, BusinessPoint, CategoryTrend, DayBalance, FixedFlexPoint, GivingPoint, IncomePoint, IncomeSource, PieSlice, Rule, SubSeries, WindowKey, YearPoint, YearTotals } from "@/lib/trends";
 import type { PlanBucketResult } from "@/lib/plans";
 import type { BalanceSeriesPoint, KeptPoint, TrendPoint } from "./Charts";
 
@@ -92,6 +92,17 @@ export interface BudgetByCategory {
   spent: number;
 }
 
+export interface MonthBalance {
+  /** The selected month's running balance, through today while it is in progress. Empty for a future month. */
+  points: DayBalance[];
+  /** The previous month's running balance over its whole length: the dashed comparison line. */
+  prev: DayBalance[] | null;
+  prevMonth: string | null;
+  daysInMonth: number;
+  /** Last day covered by `points`. */
+  throughDay: number;
+}
+
 export interface InsightsData {
   month: string;
   today: string;
@@ -129,6 +140,7 @@ export interface InsightsData {
   budget: { points: BudgetPoint[]; byCategory: BudgetByCategory[] };
   year: { points: YearPoint[]; totals: YearTotals; prev: YearTotals | null };
   compare: { prevMonth: string | null; prevLabel: string; rows: CompareRow[]; movers: Mover[] };
+  balance: MonthBalance;
   categoryRows: CategoryRowLite[];
   totalSpent: number;
   pie: PieSlice[];

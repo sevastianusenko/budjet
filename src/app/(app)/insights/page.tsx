@@ -12,6 +12,7 @@ import {
   budgetVsActual,
   businessSeries,
   categoryTrends,
+  dailyBalance,
   fixedFlexSeries,
   givingSeries,
   incomeBySource,
@@ -143,6 +144,16 @@ export default async function InsightsPage({ searchParams }: { searchParams: Sea
         .filter((m) => m.name)
     : [];
 
+  // The month's running balance, day by day, next to last month's path.
+  const throughDay = summary.status === "current" ? summary.dayOfMonth : summary.daysInMonth;
+  const balance = {
+    points: summary.status === "future" ? [] : dailyBalance(month, txs, cats, titheIds, throughDay),
+    prev: prevHasData ? dailyBalance(prevMonth, txs, cats, titheIds) : null,
+    prevMonth: prevHasData ? prevMonth : null,
+    daysInMonth: summary.daysInMonth,
+    throughDay,
+  };
+
   // Where the money went (list + pie) for the selected month.
   const totalSpent = summary.spent;
   const categoryRows = summary.rows
@@ -237,6 +248,7 @@ export default async function InsightsPage({ searchParams }: { searchParams: Sea
     budget,
     year: yearData,
     compare: { prevMonth: prev ? prevMonth : null, prevLabel, rows: compareRows, movers },
+    balance,
     categoryRows,
     totalSpent,
     pie,

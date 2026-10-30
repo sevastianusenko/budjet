@@ -1,4 +1,4 @@
-import { dayOf, lastMonths, monthLabel, monthOf, type ISODate, type Month } from "./dates";
+import { dayOf, daysInMonth, lastMonths, monthLabel, monthOf, type ISODate, type Month } from "./dates";
 import { inMonth, monthSeries, type BudgetLite, type CatLite, type GoalLite, type Group, type MonthPoint, type SubLite, type TxLite } from "./calc";
 import type { Insight } from "./insights";
 
@@ -312,6 +312,56 @@ export function rulesOfThumb(t: WindowTotals, efMonths: number | null): Rule[] {
 /** A month's totals counting only entries dated on or before `day`, so a month in progress can be compared fairly. */
 export function monthThroughDay(month: Month, day: number, txs: TxLite[], cats: CatLite[], titheIds: Set<string>): MonthPoint {
   return monthSeries([month], txs.filter((t) => !inMonth(t, month) || dayOf(t.date) <= day), cats, titheIds)[0];
+}
+
+/* ---------- Running balance ---------- */
+
+export interface DayBalance {
+  day: number;
+  /** Cumulative through this day. */
+  income: number;
+  /** Needs, wants and business spending plus tithe set-asides, the same "spent" that "kept" uses. */
+  spent: number;
+  /** Moved into goals or spent in saving categories: kept, not spent. */
+  saved: number;
+  /** income minus spent. */
+  net: number;
+}
+
+/**
+ * The month's running balance, day by day: income received so far minus money spent so far.
+ * Moves into goals are transfers, so they stay in the balance and are reported in `saved`.
+ * `throughDay` stops the series early for a month still in progress.
+ */
+export function dailyBalance(month: Month, txs: TxLite[], cats: CatLite[], titheIds: Set<string>, throughDay = daysInMonth(month)): DayBalance[] {
+  const catById = new Map(cats.map((c) => [c.id, c]));
+  const last = Math.max(0, Math.min(throughDay, daysInMonth(month)));
+  const income = new Array<number>(last + 1).fill(0);
+  const spent = new Array<number>(last + 1).fill(0);
+  const saved = new Array<number>(last + 1).fill(0);
+  for (const t of txs) {
+    if (!inMonth(t, month)) continue;
+    const d = dayOf(t.date);
+    if (d < 1 || d > last) continue;
+    if (t.type === "income") income[d] += t.amountCents;
+    else if (t.type === "goal") {
+      if (titheIds.has(t.goalId ?? "")) {
+        if (t.amountCents > 0) spent[d] += t.amountCents;
+      } else saved[d] += t.amountCents;
+    } else if ((catById.get(t.categoryId ?? "")?.group ?? "want") === "savings") saved[d] += t.amountCents;
+    else spent[d] += t.amountCents;
+  }
+  const out: DayBalance[] = [];
+  let inc = 0;
+  let sp = 0;
+  let sv = 0;
+  for (let d = 1; d <= last; d++) {
+    inc += income[d];
+    sp += spent[d];
+    sv += saved[d];
+    out.push({ day: d, income: inc, spent: sp, saved: sv, net: inc - sp });
+  }
+  return out;
 }
 
 /* ---------- Pie ---------- */

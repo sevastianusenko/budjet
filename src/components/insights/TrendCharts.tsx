@@ -6,14 +6,14 @@ import { fmtMoney, fmtPct } from "@/lib/money";
 import type { BudgetPoint, BusinessPoint, FixedFlexPoint, GivingPoint, IncomePoint, IncomeSource, PieSlice, YearPoint } from "@/lib/trends";
 import type { Group } from "@/lib/calc";
 
-const axisTick = { fontSize: 11, fill: "var(--ink-3)", fontFamily: "var(--font-plex-mono)" } as const;
+export const axisTick = { fontSize: 11, fill: "var(--ink-3)", fontFamily: "var(--font-plex-mono)" } as const;
 const compact = (c: number) => {
   if (c <= 0) return "$0";
   if (c < 100_000) return `$${Math.round(c / 100)}`;
   const k = c / 100_000;
   return `$${k >= 10 ? Math.round(k) : Math.round(k * 10) / 10}k`;
 };
-const compactSigned = (c: number) => (c < 0 ? `−${compact(-c)}` : compact(c));
+export const compactSigned = (c: number) => (c < 0 ? `−${compact(-c)}` : compact(c));
 
 export function TooltipBox({ title, rows }: { title: string; rows: { label: string; value: string; color?: string }[] }) {
   return (

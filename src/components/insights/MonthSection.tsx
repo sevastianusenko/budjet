@@ -6,7 +6,8 @@ import { fmtMoney, fmtPct } from "@/lib/money";
 import { Icon } from "@/components/ui/Icon";
 import { Empty } from "@/components/ui/Bits";
 import { SpendingDonut, sliceColors } from "./TrendCharts";
-import { Section, Segmented } from "./Shared";
+import { BALANCE_COLORS, MonthBalanceChart } from "./MonthBalanceChart";
+import { Legend, Section, Segmented } from "./Shared";
 import type { InsightsData } from "./types";
 
 export function MonthSection({ d, onDetail }: { d: InsightsData; onDetail: (id: string) => void }) {
@@ -15,9 +16,54 @@ export function MonthSection({ d, onDetail }: { d: InsightsData; onDetail: (id: 
   const downs = d.compare.movers.filter((m) => m.delta < 0).slice(0, 3);
   const short = monthLabel(d.month, "short");
   const colors = sliceColors(d.pie);
+  const b = d.balance;
+  const now = b.points[b.points.length - 1] ?? null;
+  const prevAtDay = b.prev ? (b.prev[Math.min(b.throughDay, b.prev.length) - 1] ?? null) : null;
+  const prevEnd = b.prev ? (b.prev[b.prev.length - 1] ?? null) : null;
+  const prevShort = b.prevMonth ? monthLabel(b.prevMonth, "short") : "last month";
+  const inProgress = d.monthStatus === "current";
 
   return (
     <div id="month" className="scroll-mt-24 space-y-4">
+      {now && (
+        <Section
+          title={inProgress ? `${short} so far` : `${short} balance`}
+          explain={
+            <>
+              <p>Where the month stands, day by day: income received so far minus money spent so far (needs, wants, business and tithe set-asides). Above the line you are in the plus, below it in the minus.</p>
+              <p>Money moved into goals or spent in saving categories is kept, not spent, so it stays in the balance and is noted separately underneath.</p>
+              <p>The dashed line is {prevShort} on the same days, so you can see whether this month runs ahead of or behind the last one.</p>
+            </>
+          }
+        >
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className={`display text-3xl font-semibold tracking-tight ${now.net < 0 ? "text-over" : "text-green-text"}`}>{fmtMoney(now.net, { whole: true, signed: true })}</p>
+              <p className="mt-0.5 text-xs text-ink-3">
+                {fmtMoney(now.income, { whole: true })} in · {fmtMoney(now.spent, { whole: true })} out{inProgress ? ` · day ${d.dayOfMonth} of ${d.daysInMonth}` : ""}
+              </p>
+            </div>
+            {prevAtDay && prevEnd && (
+              <div className="shrink-0 text-right text-xs text-ink-3">
+                <p>
+                  {prevShort} {inProgress ? `by day ${b.throughDay}` : "ended"}: <span className={`num font-semibold ${prevAtDay.net < 0 ? "text-over" : "text-ink"}`}>{fmtMoney(prevAtDay.net, { whole: true, signed: true })}</span>
+                </p>
+                {inProgress && b.prev && b.throughDay < b.prev.length && (
+                  <p>
+                    ended <span className={`num font-semibold ${prevEnd.net < 0 ? "text-over" : "text-ink"}`}>{fmtMoney(prevEnd.net, { whole: true, signed: true })}</span>
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="mt-3">
+            <Legend items={[{ label: short, color: now.net < 0 ? BALANCE_COLORS.down : BALANCE_COLORS.up }, ...(b.prev ? [{ label: prevShort, color: BALANCE_COLORS.prev, dashed: true }] : [])]} />
+            <MonthBalanceChart month={d.month} points={b.points} prev={b.prev} prevMonth={b.prevMonth} daysInMonth={b.daysInMonth} />
+          </div>
+          {now.saved > 0 && <p className="mt-2 text-xs text-ink-3">Goals received {fmtMoney(now.saved, { whole: true })} of this; that counts as kept, not spent.</p>}
+          {now.income === 0 && now.spent === 0 && <p className="mt-2 text-xs text-ink-3">Nothing logged in {short} yet.</p>}
+        </Section>
+      )}
       <Section
         title={`${short} vs ${d.compare.prevMonth ? monthLabel(d.compare.prevMonth, "short") : "last month"}`}
         explain={
