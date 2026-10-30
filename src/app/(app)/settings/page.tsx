@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Camera, ChevronRight, Download, FileSpreadsheet, FileText, ListTree, ReceiptText } from "lucide-react";
+import { Camera, ChevronRight, CircleHelp, Download, FileSpreadsheet, FileText, ListTree, ReceiptText } from "lucide-react";
 import { requireViewer } from "@/lib/auth";
 import { loadHousehold } from "@/lib/queries";
 import { HouseholdForm } from "@/components/settings/HouseholdForm";
@@ -79,6 +79,13 @@ export default async function SettingsPage() {
             <Link href="/import/csv" className="flex items-center gap-3 px-4 py-3.5 hover:bg-card-2/60">
               <FileSpreadsheet size={20} className="text-ink-2" />
               <span className="flex-1 text-[15px] font-medium">Import past months (CSV)</span>
+              <ChevronRight size={18} className="text-ink-3" />
+            </Link>
+          </li>
+          <li>
+            <Link href="/sort" className="flex items-center gap-3 px-4 py-3.5 hover:bg-card-2/60">
+              <CircleHelp size={20} className="text-ink-2" />
+              <span className="flex-1 text-[15px] font-medium">Sort uncategorized entries</span>
               <ChevronRight size={18} className="text-ink-3" />
             </Link>
           </li>

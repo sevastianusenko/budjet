@@ -139,7 +139,8 @@ export function PlanTable(props: {
       </section>
 
       {GROUPS.map((g) => {
-        const groupRows = rows.filter((r) => r.group === g.key && (r.planned > 0 || r.spent > 0 || !isArchivedLike(r)));
+        // The import parking spot (Uncategorized) only shows while something is parked in it.
+        const groupRows = rows.filter((r) => r.group === g.key && (r.planned > 0 || r.spent > 0 || !isArchivedLike(r)) && !(r.name === "Uncategorized" && r.spent === 0 && r.planned === 0));
         const isSavings = g.key === "savings";
         const isNeeds = g.key === "need";
         const showTithe = isNeeds && props.tithePct > 0;

@@ -31,6 +31,7 @@ Rules:
 - One line per subcategory with its total, then each item under it on its own indented line starting with "- ".
 - For every item give the name as printed (expand abbreviations if obvious), the quantity and unit when the receipt shows them (lb, oz, each, gal…), the price per unit, and the item total. Items under a line must add up to that line.
 - If a category has subcategories, always pick one; if nothing fits, use the category alone.
+- If you can't tell where an item belongs, put it under "Uncategorized" instead of guessing; I will sort it by hand.
 - Put sales tax and fees proportionally into the item amounts so the lines add up to the receipt total.
 - Amounts in dollars with two decimals, no currency sign.
 - Output ONLY in this format, nothing else, no explanations:

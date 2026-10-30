@@ -4,6 +4,7 @@ import { monthOf } from "@/lib/dates";
 import { MonthSwitcher } from "@/components/shell/MonthSwitcher";
 import { ActivityList } from "@/components/activity/ActivityList";
 import { groupItems } from "@/lib/items";
+import { UncategorizedBanner } from "@/components/home/UncategorizedBanner";
 import Link from "next/link";
 import { ReceiptText } from "lucide-react";
 
@@ -15,6 +16,8 @@ export default async function ActivityPage({ searchParams }: { searchParams: Sea
   const month = resolveMonth(sp.m, viewer.today);
   const data = await loadHousehold(viewer.household.id, viewer.today);
   const txs = data.txs.filter((t) => t.date.startsWith(month));
+  const uncId = data.categories.find((c) => c.name === "Uncategorized" && c.kind === "expense")?.id;
+  const unc = data.txs.filter((t) => t.type === "expense" && t.categoryId === uncId);
 
   return (
     <div className="space-y-4">
@@ -25,6 +28,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Sea
         </Link>
       </div>
       <MonthSwitcher month={month} currentMonth={monthOf(viewer.today)} />
+      <UncategorizedBanner count={unc.length} totalCents={unc.reduce((a, t) => a + t.amountCents, 0)} />
       <ActivityList
         txs={txs}
         members={data.members.map((m) => ({ id: m.id, name: m.name, color: m.color }))}

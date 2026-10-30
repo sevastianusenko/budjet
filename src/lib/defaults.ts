@@ -40,6 +40,8 @@ export const DEFAULT_CATEGORIES: DefaultCategory[] = [
   { name: "Kids & Pets", icon: "PawPrint", kind: "expense", group: "want", isFixed: false, rollover: false, blsKey: null, defaultSharePct: 0 },
   // Savings — 10 (the other 10 goes to the Emergency Fund goal)
   { name: "Retirement & Investing", icon: "TrendingUp", kind: "expense", group: "savings", isFixed: true, rollover: false, blsKey: "pensions", defaultSharePct: 10 },
+  // Parking spot for imports that couldn't decide; sorted later on /sort. Counts as a want until then.
+  { name: "Uncategorized", icon: "CircleHelp", kind: "expense", group: "want", isFixed: false, rollover: false, blsKey: null, defaultSharePct: 0 },
   // Business — tracked apart from the 50/30/20 split
   { name: "Business", icon: "Store", kind: "expense", group: "business", isFixed: false, rollover: false, blsKey: null, defaultSharePct: 0 },
   // Income
@@ -97,7 +99,7 @@ export const CATEGORY_ICONS = [
   "UtensilsCrossed", "Clapperboard", "ShoppingBag", "Tv", "Plane", "Sparkles", "Gift", "PartyPopper",
   "PawPrint", "TrendingUp", "Banknote", "Briefcase", "Store", "Coins", "Coffee", "Dumbbell", "GraduationCap",
   "Shirt", "Wrench", "Bus", "Pill", "Phone", "Wifi", "Droplets", "Flame", "Book", "Music", "Gamepad2",
-  "Bike", "Trees", "Hammer", "Stethoscope", "Scissors", "Dog", "Cat", "Pizza", "Wine", "Laptop", "Globe", "Tag",
+  "Bike", "Trees", "Hammer", "Stethoscope", "Scissors", "Dog", "Cat", "Pizza", "Wine", "Laptop", "Globe", "CircleHelp", "Tag",
 ] as const;
 
 export const GOAL_ICONS = [

@@ -97,7 +97,7 @@ export function CsvImportScreen({
       });
       if (!res.ok) return setError(res.error);
       toast({
-        message: `${res.imported} entries imported${res.skipped ? `, ${res.skipped} duplicates skipped` : ""}`,
+        message: `${res.imported} entries imported${res.skipped ? `, ${res.skipped} duplicates skipped` : ""}${res.uncategorized ? `, ${res.uncategorized} to sort` : ""}`,
         durationMs: 10000,
         action: {
           label: "Undo",
@@ -107,7 +107,7 @@ export function CsvImportScreen({
           },
         },
       });
-      router.push(months.length ? `/activity?m=${months[months.length - 1][0]}` : "/activity");
+      router.push(res.uncategorized > 0 ? "/sort" : months.length ? `/activity?m=${months[months.length - 1][0]}` : "/activity");
     });
   }
 

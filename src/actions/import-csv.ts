@@ -27,7 +27,7 @@ const importSchema = z.object({
   tithe: z.boolean().default(false),
 });
 
-export type CsvImportResult = { ok: true; imported: number; skipped: number; batchId: string } | { ok: false; error: string };
+export type CsvImportResult = { ok: true; imported: number; skipped: number; uncategorized: number; batchId: string } | { ok: false; error: string };
 
 /** Saves rows from a history CSV as entries, tagged with a batch id so the whole import can be undone. */
 export async function importHistory(raw: unknown): Promise<CsvImportResult> {
@@ -99,8 +99,10 @@ export async function importHistory(raw: unknown): Promise<CsvImportResult> {
         for (const row of inserted) if (row.type === "income") await syncTitheSetAside(household, row, cats.get(row.categoryId ?? "")?.name);
       }
     }
+    const uncId = [...cats.values()].find((c) => c.name === "Uncategorized")?.id;
+    const uncategorized = uncId ? toInsert.filter((r) => r.categoryId === uncId).length : 0;
     revalidatePath("/", "layout");
-    return { ok: true, imported: toInsert.length, skipped, batchId };
+    return { ok: true, imported: toInsert.length, skipped, uncategorized, batchId };
   } catch (err) {
     return { ok: false, error: errorMessage(err) };
   }

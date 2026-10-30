@@ -2,11 +2,13 @@ import { requireViewer } from "@/lib/auth";
 import { loadHousehold } from "@/lib/queries";
 import { historyPrompt } from "@/lib/csv";
 import { CsvImportScreen } from "@/components/import/CsvImportScreen";
+import { ensureUncategorized } from "@/lib/uncategorized";
 
 export const metadata = { title: "Import history" };
 
 export default async function CsvImportPage() {
   const viewer = await requireViewer();
+  await ensureUncategorized(viewer.household.id);
   const data = await loadHousehold(viewer.household.id, viewer.today);
   const categories = data.categories.map((c) => ({ id: c.id, name: c.name, kind: c.kind, archived: c.archived }));
   const subs = data.subcategories.map((s) => ({ id: s.id, categoryId: s.categoryId, name: s.name, archived: s.archived }));

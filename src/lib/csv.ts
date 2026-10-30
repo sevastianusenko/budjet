@@ -215,6 +215,7 @@ ${CSV_HEADER}
 - note: a short clean merchant or description (e.g. "Costco", "ACME payroll"), not the raw bank text.
 - paid_by: one of the family members if you can tell from the account, otherwise leave empty.
 - Skip transfers between our own accounts, credit card payments, and refunds that only reverse another row.
-- Every category must be one of the names above. If you truly can't tell, use "Fun Money" for small purchases and "Home & Supplies" for stores that sell a bit of everything.
+- Every category must be one of the names above, and pick the subcategory whenever one clearly fits.
+- When you are not sure where a row belongs, do NOT guess: use the category "Uncategorized" with an empty subcategory. I will sort those by hand. A clean "Uncategorized" is better than a wrong category.
 - Quote any field that contains a comma.`;
 }

@@ -17,6 +17,7 @@ import { CategoryPulse } from "@/components/home/CategoryPulse";
 import { UpcomingBills } from "@/components/home/UpcomingBills";
 import { RecentActivity } from "@/components/home/RecentActivity";
 import { TitheFundCard } from "@/components/home/TitheFundCard";
+import { UncategorizedBanner } from "@/components/home/UncategorizedBanner";
 import { titheStats } from "@/lib/tithe-stats";
 import { titheDefaults, titheLabeler } from "@/lib/tithe-ui";
 
@@ -55,6 +56,8 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
   const titheGoal = goals.find((g) => g.isTithe && !g.archived);
   const tithe = titheGoal ? titheStats(titheGoal, txs, viewer.today, month, titheLabeler(data.categories, data.subcategories)) : null;
   const titheDefs = titheDefaults(data.categories, data.subcategories);
+  const uncId = data.categories.find((c) => c.name === "Uncategorized" && c.kind === "expense")?.id;
+  const unc = data.txs.filter((t) => t.type === "expense" && t.categoryId === uncId);
 
   return (
     <div className="space-y-5">
@@ -75,6 +78,8 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
       </header>
 
       <MonthSwitcher month={month} currentMonth={monthOf(viewer.today)} />
+
+      <UncategorizedBanner count={unc.length} totalCents={unc.reduce((a, t) => a + t.amountCents, 0)} />
 
       <SafeToSpendCard summary={summary} />
 
