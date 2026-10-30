@@ -1,5 +1,6 @@
 import type { Transaction } from "@/db/schema";
 import { categoryBreakdown, type BreakdownRow, type Group, type MonthSummary, type Pace, type SubLite, type TxLite } from "./calc";
+import type { ItemLite } from "./items";
 
 export interface EntryLite {
   id: string;
@@ -14,6 +15,8 @@ export interface EntryLite {
   userId: string;
   memberName: string;
   memberColor: string;
+  receiptId: string | null;
+  items: ItemLite[];
 }
 
 /** Everything the category detail sheet needs, serializable for client components. */
@@ -41,6 +44,7 @@ export function buildCategoryDetails(
   txLite: TxLite[],
   subs: SubLite[],
   members: { id: string; name: string; color: string }[],
+  itemsByTx: Record<string, ItemLite[]> = {},
 ): CategoryDetail[] {
   const memberById = new Map(members.map((m) => [m.id, m]));
   const subById = new Map(subs.map((s) => [s.id, s]));
@@ -63,6 +67,8 @@ export function buildCategoryDetails(
           userId: t.userId,
           memberName: m?.name ?? "",
           memberColor: m?.color ?? "#888",
+          receiptId: t.receiptId,
+          items: itemsByTx[t.id] ?? [],
         };
       });
     return {

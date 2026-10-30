@@ -2,6 +2,7 @@ import { requireViewer } from "@/lib/auth";
 import { loadHousehold, resolveMonth, toCatLite, toGoalLite, toSubLite, toTxLite, type SearchParams } from "@/lib/queries";
 import { avgMonthlyNeeds, emergencyMonths, goalProgress, monthSeries, summarizeMonth, titheGoalIds } from "@/lib/calc";
 import { buildCategoryDetails } from "@/lib/details";
+import { groupItems } from "@/lib/items";
 import { buildInsights } from "@/lib/insights";
 import { lastMonths, monthOf } from "@/lib/dates";
 import { getProfile, profileMonthlyCents, profileShare } from "@/lib/profiles";
@@ -82,7 +83,7 @@ export default async function InsightsPage({ searchParams }: { searchParams: Sea
     .filter((r) => r.you > 0 || r.typical > 0)
     .sort((a, b) => b.typical - a.typical);
 
-  const details = buildCategoryDetails(summary, data.txs, txs, data.subcategories.map(toSubLite), data.members.map((m) => ({ id: m.id, name: m.name, color: m.color })));
+  const details = buildCategoryDetails(summary, data.txs, txs, data.subcategories.map(toSubLite), data.members.map((m) => ({ id: m.id, name: m.name, color: m.color })), groupItems(data.receiptItems));
 
   return (
     <div className="space-y-5">

@@ -14,40 +14,26 @@ export function categoryList(categories: MatchCategory[], subs: MatchSub[]): str
 export const OUTPUT_FORMAT = `date: YYYY-MM-DD
 store: name of the store
 Category / Subcategory: amount
+  - item name, quantity unit @ price per unit = amount
+  - item name, quantity each @ price = amount
 Category / Subcategory: amount
+  - item name = amount
 total: amount`;
 
 /** The prompt a family member pastes into ChatGPT (or any assistant) together with the receipt photo. */
 export function chatgptPrompt(categories: MatchCategory[], subs: MatchSub[]): string {
-  return `Read this receipt photo and sort every line item into my family budget categories.
+  return `Read this receipt photo and sort every purchase into my family budget categories, keeping each item.
 
 My categories (use these exact names; subcategories are listed after the colon):
 ${categoryList(categories, subs)}
 
 Rules:
-- Sum the items that belong to the same subcategory into one line.
+- One line per subcategory with its total, then each item under it on its own indented line starting with "- ".
+- For every item give the name as printed (expand abbreviations if obvious), the quantity and unit when the receipt shows them (lb, oz, each, gal…), the price per unit, and the item total. Items under a line must add up to that line.
 - If a category has subcategories, always pick one; if nothing fits, use the category alone.
-- Put sales tax and fees proportionally into the lines (or into the largest line).
+- Put sales tax and fees proportionally into the item amounts so the lines add up to the receipt total.
 - Amounts in dollars with two decimals, no currency sign.
-- Output ONLY these lines, nothing else, no explanations:
+- Output ONLY in this format, nothing else, no explanations:
 
 ${OUTPUT_FORMAT}`;
-}
-
-/** System prompt for the in-app scan (Claude vision). Asks for JSON the app parses directly. */
-export function scanSystemPrompt(categories: MatchCategory[], subs: MatchSub[], today: string): string {
-  return `You read receipt photos for a family budgeting app and sort the purchases into the household's categories.
-
-Household categories (exact names; subcategories after the colon):
-${categoryList(categories, subs)}
-
-Today's date is ${today}. Respond with JSON only, no markdown, no commentary:
-{"date":"YYYY-MM-DD or null","store":"string or null","total":number or null,"items":[{"category":"exact category name","subcategory":"exact subcategory name or null","amount":number,"note":"short description of what's in this line"}]}
-
-Rules:
-- Group items that belong to the same subcategory into one item; use the receipt's grouping only as a hint.
-- If a category has subcategories, pick the best one; otherwise leave subcategory null.
-- Spread tax and fees proportionally into the items so the items add up to the receipt total.
-- Amounts in dollars as numbers. Use the receipt's own total when printed.
-- If the photo is not a receipt or is unreadable, respond {"error":"short reason"}.`;
 }

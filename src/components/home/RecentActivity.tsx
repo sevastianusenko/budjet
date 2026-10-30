@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Category, Goal, Subcategory, Transaction } from "@/db/schema";
 import { SectionTitle, Empty } from "@/components/ui/Bits";
 import { TxRow } from "@/components/activity/TxRow";
+import type { ItemLite } from "@/lib/items";
 
 export function RecentActivity({
   txs,
@@ -9,6 +10,7 @@ export function RecentActivity({
   categories,
   subcategories,
   goals,
+  itemsByTx = {},
   today,
   month,
 }: {
@@ -17,6 +19,7 @@ export function RecentActivity({
   categories: Category[];
   subcategories: Subcategory[];
   goals: Goal[];
+  itemsByTx?: Record<string, ItemLite[]>;
   today: string;
   month: string;
 }) {
@@ -36,7 +39,7 @@ export function RecentActivity({
       ) : (
         <ul className="divide-y divide-line rounded-card bg-card shadow-card">
           {txs.map((t) => (
-            <TxRow key={t.id} tx={t} members={members} categories={categories} subcategories={subcategories} goals={goals} today={today} showDate />
+            <TxRow key={t.id} tx={t} members={members} categories={categories} subcategories={subcategories} goals={goals} items={itemsByTx[t.id]} today={today} showDate />
           ))}
         </ul>
       )}

@@ -2,6 +2,7 @@ import { requireViewer } from "@/lib/auth";
 import { loadHousehold, resolveMonth, toCatLite, toGoalLite, toSubLite, toTxLite, type SearchParams } from "@/lib/queries";
 import { summarizeMonth } from "@/lib/calc";
 import { buildCategoryDetails } from "@/lib/details";
+import { groupItems } from "@/lib/items";
 import { addMonths, monthOf } from "@/lib/dates";
 import { MonthSwitcher } from "@/components/shell/MonthSwitcher";
 import { PlanTable } from "@/components/plan/PlanTable";
@@ -27,7 +28,8 @@ export default async function PlanPage({ searchParams }: { searchParams: SearchP
   });
   const prevHasPlan = data.budgets.some((b) => b.month === addMonths(month, -1) && b.plannedCents > 0);
   const members = data.members.map((m) => ({ id: m.id, name: m.name, color: m.color }));
-  const details = buildCategoryDetails(summary, data.txs, txs, data.subcategories.map(toSubLite), members);
+  const itemsByTx = groupItems(data.receiptItems);
+  const details = buildCategoryDetails(summary, data.txs, txs, data.subcategories.map(toSubLite), members, itemsByTx);
 
   return (
     <div className="space-y-4">

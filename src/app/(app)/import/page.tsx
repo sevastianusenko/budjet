@@ -1,7 +1,6 @@
 import { requireViewer } from "@/lib/auth";
 import { loadHousehold } from "@/lib/queries";
 import { chatgptPrompt } from "@/lib/receipt-prompt";
-import { scanAvailable } from "@/actions/scan";
 import { ImportScreen } from "@/components/import/ImportScreen";
 
 export const metadata = { title: "Import a receipt" };
@@ -19,7 +18,6 @@ export default async function ImportPage() {
       meId={viewer.user.id}
       today={viewer.today}
       prompt={chatgptPrompt(categories, subs)}
-      aiEnabled={await scanAvailable()}
     />
   );
 }

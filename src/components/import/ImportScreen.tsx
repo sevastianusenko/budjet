@@ -3,10 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState, useTransition } from "react";
-import { Camera, Check, ChevronLeft, ClipboardCopy, Plus, Sparkles, X } from "lucide-react";
+import { Check, ChevronLeft, ClipboardCopy, Plus, X } from "lucide-react";
 import { importEntries } from "@/actions/import";
-import { scanReceipt } from "@/actions/scan";
-import { parseReceiptText, type MatchCategory, type MatchSub } from "@/lib/receipt-parse";
+import { describeItem, parseReceiptText, type MatchCategory, type MatchSub, type ParsedItem } from "@/lib/receipt-parse";
 import { fmtMoney, parseAmountToCents } from "@/lib/money";
 import { Button } from "@/components/ui/Button";
 import { ErrorText, Field, Input, Select, inputClass } from "@/components/ui/Field";
@@ -20,6 +19,7 @@ interface Row {
   amount: string;
   note: string;
   unmatched: string | null;
+  items: ParsedItem[];
 }
 
 export function ImportScreen({
@@ -29,7 +29,6 @@ export function ImportScreen({
   meId,
   today,
   prompt,
-  aiEnabled,
 }: {
   categories: (MatchCategory & { icon: string })[];
   subcategories: MatchSub[];
@@ -37,12 +36,10 @@ export function ImportScreen({
   meId: string;
   today: string;
   prompt: string;
-  aiEnabled: boolean;
 }) {
   const router = useRouter();
   const toast = useToast();
   const [pending, start] = useTransition();
-  const [scanning, setScanning] = useState(false);
   const [text, setText] = useState("");
   const [rows, setRows] = useState<Row[]>([]);
   const [date, setDate] = useState(today);
@@ -52,7 +49,6 @@ export function ImportScreen({
   const [totalHint, setTotalHint] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
   const keyRef = useRef(1);
 
   const expenseCats = categories.filter((c) => c.kind === "expense" && !c.archived);
@@ -70,6 +66,7 @@ export function ImportScreen({
         amount: (l.amountCents / 100).toFixed(2),
         note: l.note || (l.categoryId ? "" : l.raw),
         unmatched: l.unmatched,
+        items: l.items,
       })),
     );
     if (parsed.date) setDate(parsed.date);
@@ -84,29 +81,12 @@ export function ImportScreen({
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     } catch {
-      toast({ message: "Couldn't copy. Select the prompt text and copy it by hand.", tone: "error" });
-    }
-  }
-
-  async function onPhoto(file: File | undefined) {
-    if (!file) return;
-    setScanning(true);
-    setError(null);
-    try {
-      const { data, mediaType } = await shrinkImage(file);
-      const res = await scanReceipt({ data, mediaType });
-      if (!res.ok) return setError(res.error);
-      applyText(res.text);
-      toast({ message: "Receipt read. Check the lines, then save." });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't read that photo.");
-    } finally {
-      setScanning(false);
-      if (fileRef.current) fileRef.current.value = "";
+      toast({ message: "Couldn't copy. Open the prompt below and copy it by hand.", tone: "error" });
     }
   }
 
   const totalCents = useMemo(() => rows.reduce((a, r) => a + (parseAmountToCents(r.amount) ?? 0), 0), [rows]);
+  const itemCount = rows.reduce((a, r) => a + r.items.length, 0);
   const ready = rows.length > 0 && rows.every((r) => r.categoryId && (parseAmountToCents(r.amount) ?? 0) > 0);
 
   function update(key: number, patch: Partial<Row>) {
@@ -119,16 +99,18 @@ export function ImportScreen({
         date,
         store,
         userId: paidBy,
+        totalCents: totalHint ?? undefined,
         lines: rows.map((r) => ({
           categoryId: r.categoryId,
           subcategoryId: r.subcategoryId || null,
           amountCents: parseAmountToCents(r.amount) ?? 0,
           note: r.note,
+          items: r.items,
         })),
       });
       if (!res.ok) return setError(res.error);
-      toast({ message: `${res.count} entr${res.count === 1 ? "y" : "ies"} saved · ${fmtMoney(res.totalCents)}` });
-      router.push("/activity");
+      toast({ message: `Receipt saved · ${res.count} entr${res.count === 1 ? "y" : "ies"} · ${fmtMoney(res.totalCents)}` });
+      router.push(`/receipts/${res.receiptId}`);
     });
   }
 
@@ -142,33 +124,19 @@ export function ImportScreen({
       </div>
 
       <section className="rounded-card bg-card p-4 shadow-card">
-        <h2 className="flex items-center gap-2 text-[13px] font-semibold uppercase tracking-wide text-ink-3">
-          <Sparkles size={14} /> Scan with AI
-        </h2>
-        {aiEnabled ? (
-          <>
-            <p className="mt-1 text-sm text-ink-2">Take a photo of the receipt. It&apos;s split into your categories and subcategories; you check the lines and save.</p>
-            <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => onPhoto(e.target.files?.[0])} />
-            <Button className="mt-3 w-full" size="lg" disabled={scanning} onClick={() => fileRef.current?.click()}>
-              <Camera size={20} /> {scanning ? "Reading the receipt…" : "Take a photo or choose one"}
-            </Button>
-          </>
-        ) : (
-          <p className="mt-1 text-sm text-ink-2">
-            Not set up yet. Add an <code className="rounded bg-card-2 px-1 text-xs">ANTHROPIC_API_KEY</code> environment variable to the server and this turns into a one-tap photo scan. Until then, use the paste option below.
-          </p>
-        )}
-      </section>
-
-      <section className="rounded-card bg-card p-4 shadow-card">
-        <h2 className="flex items-center gap-2 text-[13px] font-semibold uppercase tracking-wide text-ink-3">
-          <ClipboardCopy size={14} /> Paste from ChatGPT or any assistant
-        </h2>
-        <p className="mt-1 text-sm text-ink-2">
-          Copy the prompt, paste it into ChatGPT together with the receipt photo, then paste the answer here. The prompt already lists your categories, so the answer drops straight in.
-        </p>
+        <ol className="space-y-2 text-sm text-ink-2">
+          <li>
+            <span className="font-semibold text-ink">1.</span> Tap <strong className="font-semibold text-ink">Copy prompt</strong>. It already lists your categories and subcategories.
+          </li>
+          <li>
+            <span className="font-semibold text-ink">2.</span> In ChatGPT (or any assistant) attach a photo of the receipt, paste the prompt, send.
+          </li>
+          <li>
+            <span className="font-semibold text-ink">3.</span> Copy its answer and paste it below. Every item is kept: what, how much, price per pound.
+          </li>
+        </ol>
         <div className="mt-3 flex gap-2">
-          <Button variant="secondary" onClick={copyPrompt}>
+          <Button onClick={copyPrompt}>
             <ClipboardCopy size={18} /> {copied ? "Copied!" : "Copy prompt"}
           </Button>
           <details className="min-w-0 flex-1 text-xs text-ink-3">
@@ -179,10 +147,11 @@ export function ImportScreen({
         <textarea
           value={text}
           onChange={(e) => applyText(e.target.value)}
-          placeholder={"Paste the answer here, e.g.\nGroceries / Meat & fish: 23.40\nGroceries / Vegetables & fruit: 15.10\ndate: 2026-10-30\nstore: Costco"}
-          rows={6}
-          className={`${inputClass} mt-3 h-auto min-h-36 py-3 font-mono text-[13px]`}
+          placeholder={"Paste the answer here, e.g.\nstore: Costco\nGroceries / Meat & fish: 23.40\n  - Chicken thighs, 3.2 lb @ 2.99/lb = 9.57\n  - Ground beef, 2 lb @ 6.92/lb = 13.83"}
+          rows={7}
+          className={`${inputClass} mt-3 h-auto min-h-40 py-3 font-mono text-[13px]`}
         />
+        <p className="mt-2 text-xs text-ink-3">You can also type lines by hand in the same shape. Items go on indented lines starting with “- ”.</p>
       </section>
 
       {rows.length > 0 && (
@@ -192,7 +161,7 @@ export function ImportScreen({
             <Field label="Date">
               <Input type="date" value={date} max={today} onChange={(e) => setDate(e.target.value)} />
             </Field>
-            <Field label="Store (goes into notes)">
+            <Field label="Store">
               <Input value={store} onChange={(e) => setStore(e.target.value)} placeholder="Costco" maxLength={80} />
             </Field>
           </div>
@@ -248,13 +217,34 @@ export function ImportScreen({
                       <X size={18} />
                     </button>
                   </div>
+                  {r.items.length > 0 && (
+                    <ul className="mt-2 divide-y divide-line rounded-xl bg-card-2/60 px-3 text-sm">
+                      {r.items.map((it, i) => (
+                        <li key={i} className="flex items-center gap-2 py-1.5">
+                          <span className="min-w-0 flex-1 truncate">
+                            {it.name}
+                            {describeItem(it) && <span className="text-xs text-ink-3"> · {describeItem(it)}</span>}
+                          </span>
+                          <span className="num text-ink-2">{fmtMoney(it.amountCents)}</span>
+                          <button
+                            type="button"
+                            aria-label={`Remove ${it.name}`}
+                            onClick={() => update(r.key, { items: r.items.filter((_, j) => j !== i) })}
+                            className="flex h-7 w-7 items-center justify-center rounded-lg text-ink-3 hover:bg-over-soft hover:text-over"
+                          >
+                            <X size={14} />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </li>
               );
             })}
           </ul>
           <button
             type="button"
-            onClick={() => setRows((rs) => [...rs, { key: keyRef.current++, categoryId: "", subcategoryId: "", amount: "", note: "", unmatched: null }])}
+            onClick={() => setRows((rs) => [...rs, { key: keyRef.current++, categoryId: "", subcategoryId: "", amount: "", note: "", unmatched: null, items: [] }])}
             className="mt-3 flex items-center gap-1 text-sm font-medium text-green-text"
           >
             <Plus size={16} /> Add a line
@@ -270,34 +260,18 @@ export function ImportScreen({
           <div className="mt-3">
             <ErrorText>{error}</ErrorText>
           </div>
-          <div className="mt-4 flex items-center justify-between">
+          <div className="mt-4 flex items-center justify-between gap-3">
             <p className="text-sm text-ink-2">
-              {rows.length} line{rows.length === 1 ? "" : "s"} · <span className="num font-semibold text-ink">{fmtMoney(totalCents)}</span>
+              {rows.length} line{rows.length === 1 ? "" : "s"}
+              {itemCount > 0 && `, ${itemCount} item${itemCount === 1 ? "" : "s"}`} · <span className="num font-semibold text-ink">{fmtMoney(totalCents)}</span>
               {totalHint !== null && Math.abs(totalHint - totalCents) > 100 && <span className="text-warn"> (receipt says {fmtMoney(totalHint)})</span>}
             </p>
             <Button onClick={save} disabled={!ready || pending}>
-              <Check size={18} /> Save {rows.length}
+              <Check size={18} /> Save
             </Button>
           </div>
         </section>
       )}
-      {rows.length === 0 && error && <ErrorText>{error}</ErrorText>}
     </div>
   );
-}
-
-/** Resize on the phone so uploads stay small (max 1600px, JPEG). */
-async function shrinkImage(file: File): Promise<{ data: string; mediaType: string }> {
-  const bitmap = await createImageBitmap(file);
-  const max = 1600;
-  const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Couldn't process the image.");
-  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  bitmap.close();
-  const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
-  return { data: dataUrl.split(",")[1] ?? "", mediaType: "image/jpeg" };
 }

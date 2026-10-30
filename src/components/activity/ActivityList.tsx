@@ -7,6 +7,7 @@ import { dateLabel } from "@/lib/dates";
 import { fmtMoney } from "@/lib/money";
 import { Empty, MemberDot, Money } from "@/components/ui/Bits";
 import { TxRow } from "./TxRow";
+import type { ItemLite } from "@/lib/items";
 
 type Filter = "all" | "expense" | "income" | "goal";
 
@@ -16,6 +17,7 @@ export function ActivityList({
   categories,
   subcategories,
   goals,
+  itemsByTx = {},
   today,
 }: {
   txs: Transaction[];
@@ -23,6 +25,7 @@ export function ActivityList({
   categories: { id: string; name: string; icon: string }[];
   subcategories: { id: string; name: string }[];
   goals: { id: string; name: string; icon: string; isTithe?: boolean }[];
+  itemsByTx?: Record<string, ItemLite[]>;
   today: string;
 }) {
   const [filter, setFilter] = useState<Filter>("all");
@@ -134,7 +137,7 @@ export function ActivityList({
                 </div>
                 <ul className="divide-y divide-line rounded-card bg-card shadow-card">
                   {items.map((t) => (
-                    <TxRow key={t.id} tx={t} members={members} categories={categories} subcategories={subcategories} goals={goals} today={today} />
+                    <TxRow key={t.id} tx={t} members={members} categories={categories} subcategories={subcategories} goals={goals} items={itemsByTx[t.id]} today={today} />
                   ))}
                 </ul>
               </section>

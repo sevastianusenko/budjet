@@ -1,6 +1,6 @@
 import "server-only";
 import { cache } from "react";
-import { and, asc, desc, eq, gte, or } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, or } from "drizzle-orm";
 import { getDb, schema } from "@/db";
 import { addMonths, monthOf, type ISODate, type Month } from "./dates";
 import type { BudgetLite, CatLite, GoalLite, SubLite, TxLite } from "./calc";
@@ -14,6 +14,9 @@ export interface HouseholdData {
   recurring: schema.Recurring[];
   /** Transactions from `historyStart` onward, plus every goal transaction (for goal totals). */
   txs: schema.Transaction[];
+  /** Imported receipts in the window and the item detail of the loaded entries. */
+  receipts: schema.Receipt[];
+  receiptItems: schema.ReceiptItem[];
   historyStart: ISODate;
 }
 
@@ -26,7 +29,7 @@ const HISTORY_MONTHS = 24;
 export const loadHousehold = cache(async (householdId: string, today: ISODate): Promise<HouseholdData> => {
   const db = await getDb();
   const historyStart: ISODate = `${addMonths(monthOf(today), -HISTORY_MONTHS)}-01`;
-  const [members, categories, subcategories, budgets, goals, recurring, txs] = await Promise.all([
+  const [members, categories, subcategories, budgets, goals, recurring, txs, receipts] = await Promise.all([
     db.query.users.findMany({ where: eq(schema.users.householdId, householdId), orderBy: asc(schema.users.createdAt) }),
     db.query.categories.findMany({
       where: eq(schema.categories.householdId, householdId),
@@ -49,7 +52,16 @@ export const loadHousehold = cache(async (householdId: string, today: ISODate): 
       ),
       orderBy: [desc(schema.transactions.date), desc(schema.transactions.createdAt)],
     }),
+    db.query.receipts.findMany({
+      where: and(eq(schema.receipts.householdId, householdId), gte(schema.receipts.date, historyStart)),
+      orderBy: [desc(schema.receipts.date), desc(schema.receipts.createdAt)],
+    }),
   ]);
+  const withReceipt = txs.filter((t) => t.receiptId).map((t) => t.id);
+  const receiptItems: schema.ReceiptItem[] = [];
+  for (let i = 0; i < withReceipt.length; i += 500) {
+    receiptItems.push(...(await db.query.receiptItems.findMany({ where: inArray(schema.receiptItems.transactionId, withReceipt.slice(i, i + 500)) })));
+  }
   return {
     members,
     categories,
@@ -58,6 +70,8 @@ export const loadHousehold = cache(async (householdId: string, today: ISODate): 
     goals,
     recurring,
     txs,
+    receipts,
+    receiptItems,
     historyStart,
   };
 });

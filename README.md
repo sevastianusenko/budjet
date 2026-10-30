@@ -16,7 +16,7 @@ Built for phones first, installable from the browser ("Add to Home Screen"), hos
 - **Recurring bills** — due dates, "Paid" in one tap.
 - **Insights** — plain-language, rule-based observations plus charts: income vs spending, savings rate, where the money went (with the typical U.S. household share for comparison), who logged what.
 - **Every number explains itself** — tap the ? next to it.
-- **Receipts in one tap**: photograph a receipt and Claude splits it into your categories and subcategories (needs `ANTHROPIC_API_KEY`), or copy the built-in prompt into ChatGPT and paste its answer; either way you check the lines and save.
+- **Receipts**: copy the built-in prompt into ChatGPT (or any assistant) with a photo of the receipt, paste the answer, check the lines and save. Every item is kept: what was bought, how much, price per pound. Tap an entry to see its items; Receipts keeps the whole history.
 - **CSV export**, no bank linking, your own database.
 
 ## Run locally
@@ -76,8 +76,6 @@ choose **Join a household** and enter the invite code from Settings.
 |---|---|---|
 | `DATABASE_URL` | production | Postgres connection string. Injected by the Vercel Neon integration. Unset locally = PGlite. |
 | `AUTH_SECRET` | production | Signs the session cookie (HS256). A dev fallback is used locally. |
-| `ANTHROPIC_API_KEY` | optional | Enables in-app receipt scanning (Claude vision). Without it the Import screen offers the paste-from-ChatGPT flow only. |
-| `HEARTH_AI_MODEL` | optional | Model for receipt scanning. Defaults to `claude-opus-5-5`; set `claude-haiku-5-5` for the cheapest option. |
 
 ## Not in v1 (on purpose)
 

@@ -71,7 +71,14 @@ export default async function SettingsPage() {
           <li>
             <Link href="/import" className="flex items-center gap-3 px-4 py-3.5 hover:bg-card-2/60">
               <Camera size={20} className="text-ink-2" />
-              <span className="flex-1 text-[15px] font-medium">Import a receipt (photo or paste)</span>
+              <span className="flex-1 text-[15px] font-medium">Import a receipt</span>
+              <ChevronRight size={18} className="text-ink-3" />
+            </Link>
+          </li>
+          <li>
+            <Link href="/receipts" className="flex items-center gap-3 px-4 py-3.5 hover:bg-card-2/60">
+              <ReceiptText size={20} className="text-ink-2" />
+              <span className="flex-1 text-[15px] font-medium">Receipt history</span>
               <ChevronRight size={18} className="text-ink-3" />
             </Link>
           </li>

@@ -5,6 +5,7 @@ import { dateLabel } from "@/lib/dates";
 import { Icon } from "@/components/ui/Icon";
 import { MemberDot, Money } from "@/components/ui/Bits";
 import { useAddSheet } from "@/components/shell/AppShell";
+import type { ItemLite } from "@/lib/items";
 
 export interface RowGoal {
   id: string;
@@ -19,6 +20,7 @@ export function TxRow({
   categories,
   subcategories = [],
   goals,
+  items = [],
   today,
   showDate = false,
 }: {
@@ -27,6 +29,7 @@ export function TxRow({
   categories: Pick<Category, "id" | "name" | "icon">[];
   subcategories?: { id: string; name: string }[];
   goals: RowGoal[];
+  items?: ItemLite[];
   today: string;
   showDate?: boolean;
 }) {
@@ -52,7 +55,12 @@ export function TxRow({
               ? "text-ink-2"
               : "text-save"
           : "text-ink";
-  const meta = [showDate ? dateLabel(tx.date, today) : null, fundGiving ? "from Tithe fund" : setAside ? "set aside" : null, tx.note || null]
+  const meta = [
+    showDate ? dateLabel(tx.date, today) : null,
+    fundGiving ? "from Tithe fund" : setAside ? "set aside" : null,
+    items.length > 0 ? `${items.length} item${items.length === 1 ? "" : "s"}` : null,
+    tx.note || null,
+  ]
     .filter(Boolean)
     .join(" · ");
   const shown = tx.type === "income" ? tx.amountCents : tx.type === "goal" ? tx.amountCents : -tx.amountCents;
@@ -72,6 +80,8 @@ export function TxRow({
             goalId: tx.goalId,
             note: tx.note,
             userId: tx.userId,
+            receiptId: tx.receiptId,
+            items,
           })
         }
         className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-card-2/60"

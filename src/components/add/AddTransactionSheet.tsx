@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
-import { Camera, Check, ChevronDown, Delete } from "lucide-react";
+import { Check, ChevronDown, Delete, ReceiptText } from "lucide-react";
 import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
@@ -13,6 +13,8 @@ import { addTransaction, deleteTransaction, restoreTransaction, updateTransactio
 import { addDays, dateLabel } from "@/lib/dates";
 import { centsToInput, fmtMoney } from "@/lib/money";
 import type { ShellCategory, ShellGoal, ShellMember, ShellSubcategory, ShellTitheFund } from "@/components/shell/AppShell";
+import type { ItemLite } from "@/lib/items";
+import { describeItem } from "@/lib/receipt-parse";
 
 export type EntryType = "expense" | "income" | "goal";
 
@@ -36,6 +38,8 @@ export interface EditableTx {
   goalId: string | null;
   note: string;
   userId: string;
+  receiptId?: string | null;
+  items?: ItemLite[];
 }
 
 interface FormProps {
@@ -314,7 +318,7 @@ function EntryForm({ onClose, me, members, categories, subcategories, goals, tit
             )}
             {type === "expense" && !edit && (
               <Link href="/import" onClick={onClose} className="mt-4 flex items-center justify-center gap-2 rounded-2xl border border-dashed border-line-strong px-4 py-3 text-sm font-medium text-ink-2 hover:bg-card-2">
-                <Camera size={16} /> Have a receipt? Scan or paste it
+                <ReceiptText size={16} /> Have a receipt? Paste it with every item
               </Link>
             )}
             <div className="mt-3">
@@ -400,6 +404,30 @@ function EntryForm({ onClose, me, members, categories, subcategories, goals, tit
                 </button>
               )}
             </div>
+
+            {edit && edit.items && edit.items.length > 0 && (
+              <div className="mt-2 rounded-2xl border border-line">
+                <div className="flex items-center justify-between px-3 pt-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-3">On the receipt</span>
+                  {edit.receiptId && (
+                    <Link href={`/receipts/${edit.receiptId}`} onClick={onClose} className="text-xs font-medium text-green-text">
+                      Whole receipt
+                    </Link>
+                  )}
+                </div>
+                <ul className="max-h-40 divide-y divide-line overflow-y-auto px-3 pb-1 text-sm">
+                  {edit.items.map((it) => (
+                    <li key={it.id} className="flex items-center gap-2 py-1.5">
+                      <span className="min-w-0 flex-1 truncate">
+                        {it.name}
+                        {describeItem(it) && <span className="text-xs text-ink-3"> · {describeItem(it)}</span>}
+                      </span>
+                      <span className="num text-ink-2">{fmtMoney(it.amountCents)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {type === "expense" && titheFund && (
               <div className="mt-2 rounded-2xl border border-line px-4">

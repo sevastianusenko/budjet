@@ -136,6 +136,8 @@ export function CategoryDetailSheet({ detail, onClose, today }: { detail: Catego
                         goalId: e.goalId,
                         note: e.note,
                         userId: e.userId,
+                        receiptId: e.receiptId,
+                        items: e.items,
                       });
                     }}
                     className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-card-2/60"
@@ -145,6 +147,7 @@ export function CategoryDetailSheet({ detail, onClose, today }: { detail: Catego
                       <span className="block truncate text-[14px]">{e.subName ?? d.name}</span>
                       <span className="block truncate text-xs text-ink-3">
                         {dateLabel(e.date, today)}
+                        {e.items.length > 0 ? ` · ${e.items.length} item${e.items.length === 1 ? "" : "s"}` : ""}
                         {e.note ? ` · ${e.note}` : ""}
                       </span>
                     </span>

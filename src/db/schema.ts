@@ -3,6 +3,7 @@ import {
   index,
   integer,
   pgTable,
+  real,
   text,
   timestamp,
   uniqueIndex,
@@ -159,6 +160,25 @@ export const recurring = pgTable(
   (t) => [index("recurring_household_idx").on(t.householdId)],
 );
 
+/** A receipt imported as a whole: its lines are transactions, its item details are receipt_items. */
+export const receipts = pgTable(
+  "receipts",
+  {
+    id: id(),
+    householdId: text("household_id")
+      .notNull()
+      .references(() => households.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    store: text("store").notNull().default(""),
+    date: text("date").notNull(),
+    totalCents: integer("total_cents").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("receipts_household_date_idx").on(t.householdId, t.date)],
+);
+
 export const transactions = pgTable(
   "transactions",
   {
@@ -176,6 +196,8 @@ export const transactions = pgTable(
     recurringId: text("recurring_id").references(() => recurring.id, { onDelete: "set null" }),
     /** For automatic entries (a tithe set-aside): the income entry that produced it. */
     parentId: text("parent_id"),
+    /** Set when the entry is one line of an imported receipt. */
+    receiptId: text("receipt_id").references(() => receipts.id, { onDelete: "set null" }),
     type: text("type", { enum: ["expense", "income", "goal"] }).notNull(),
     /** Cents. Positive. For type "goal" a negative value is a withdrawal. */
     amountCents: integer("amount_cents").notNull(),
@@ -192,7 +214,32 @@ export const transactions = pgTable(
   ],
 );
 
+/** What exactly was bought in one entry: "Chicken thighs, 3.2 lb @ 2.99/lb = 9.57". */
+export const receiptItems = pgTable(
+  "receipt_items",
+  {
+    id: id(),
+    householdId: text("household_id")
+      .notNull()
+      .references(() => households.id, { onDelete: "cascade" }),
+    transactionId: text("transaction_id")
+      .notNull()
+      .references(() => transactions.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    /** Quantity in `unit` (3.2 lb, 4 each), null when the receipt didn't say. */
+    qty: real("qty"),
+    unit: text("unit"),
+    /** Price per unit in cents, null when unknown. */
+    unitPriceCents: integer("unit_price_cents"),
+    amountCents: integer("amount_cents").notNull(),
+    sortOrder: integer("sort_order").notNull().default(0),
+  },
+  (t) => [index("receipt_items_transaction_idx").on(t.transactionId)],
+);
+
 export type Household = typeof households.$inferSelect;
+export type Receipt = typeof receipts.$inferSelect;
+export type ReceiptItem = typeof receiptItems.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type Category = typeof categories.$inferSelect;
 export type Subcategory = typeof subcategories.$inferSelect;

@@ -4,6 +4,7 @@ import { requireViewer } from "@/lib/auth";
 import { loadHousehold, resolveMonth, toCatLite, toGoalLite, toSubLite, toTxLite, type SearchParams } from "@/lib/queries";
 import { avgMonthlyNeeds, emergencyMonths, goalProgress, summarizeMonth } from "@/lib/calc";
 import { buildCategoryDetails } from "@/lib/details";
+import { groupItems } from "@/lib/items";
 import { buildInsights } from "@/lib/insights";
 import { monthOf } from "@/lib/dates";
 import { MonthSwitcher } from "@/components/shell/MonthSwitcher";
@@ -49,7 +50,8 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
   const insights = buildInsights({ summary, goals: progress, emergencyMonths: efMonths, catName }).slice(0, 3);
 
   const members = data.members.map((m) => ({ id: m.id, name: m.name, color: m.color }));
-  const details = buildCategoryDetails(summary, data.txs, txs, subs, members);
+  const itemsByTx = groupItems(data.receiptItems);
+  const details = buildCategoryDetails(summary, data.txs, txs, subs, members, itemsByTx);
   const titheGoal = goals.find((g) => g.isTithe && !g.archived);
   const tithe = titheGoal ? titheStats(titheGoal, txs, viewer.today, month, titheLabeler(data.categories, data.subcategories)) : null;
   const titheDefs = titheDefaults(data.categories, data.subcategories);
@@ -94,6 +96,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
         categories={data.categories}
         subcategories={data.subcategories}
         goals={data.goals}
+        itemsByTx={itemsByTx}
         today={viewer.today}
         month={month}
       />
