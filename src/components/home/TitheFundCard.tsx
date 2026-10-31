@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { Church, HandHeart } from "lucide-react";
 import type { TitheStats } from "@/lib/tithe-stats";
 import { fmtMoney } from "@/lib/money";
 import { Explain } from "@/components/ui/Explain";
 import { Button } from "@/components/ui/Button";
 import { useAddSheet } from "@/components/shell/AppShell";
+import { TitheAdjustSheet } from "./TitheAdjustSheet";
 
 /** The Tithe fund: what's been set aside, what's been given, what's left to give. */
 export function TitheFundCard({
@@ -24,6 +26,7 @@ export function TitheFundCard({
 }) {
   const { openNew } = useAddSheet();
   const low = stats.balance <= 0;
+  const [adjusting, setAdjusting] = useState(false);
 
   return (
     <section className="rounded-card bg-card p-4 shadow-card">
@@ -33,9 +36,15 @@ export function TitheFundCard({
           <p>Every income you log sets aside {tithePct}% into this fund automatically (it shows under Needs the moment the money comes in).</p>
           <p>When you give to church or help someone, log it as an expense and leave &quot;Paid from the Tithe fund&quot; on: the balance goes down and it is not counted as new spending. Switch it off for extra giving from your own money.</p>
           <p>Balance = starting amount + set-asides − giving from the fund. Giving cash still counts: log it the same way.</p>
+          <p>If the real envelope or account shows something else, tap Adjust and type what is actually there.</p>
         </Explain>
       </div>
-      <p className={`display mt-1 text-3xl font-semibold tracking-tight ${low ? "text-over" : "text-ink"}`}>{fmtMoney(stats.balance, { whole: true })}</p>
+      <div className="flex items-end justify-between gap-3">
+        <p className={`display mt-1 text-3xl font-semibold tracking-tight ${low ? "text-over" : "text-ink"}`}>{fmtMoney(stats.balance, { whole: true })}</p>
+        <button type="button" onClick={() => setAdjusting(true)} className="mb-1 shrink-0 rounded-lg px-2 py-1 text-sm font-medium text-green-text hover:bg-card-2">
+          Adjust
+        </button>
+      </div>
       <p className="mt-1 text-sm text-ink-2">
         {low ? "Nothing left in the fund." : "left to give."} This month: <span className="num font-medium text-ink">+{fmtMoney(stats.setAsideMonth, { whole: true })}</span> set aside,{" "}
         <span className="num font-medium text-ink">−{fmtMoney(stats.givenMonth, { whole: true })}</span> given
@@ -63,6 +72,7 @@ export function TitheFundCard({
           <HandHeart size={16} /> Helped someone
         </Button>
       </div>
+      <TitheAdjustSheet open={adjusting} onClose={() => setAdjusting(false)} goalId={stats.goalId} balance={stats.balance} />
     </section>
   );
 }

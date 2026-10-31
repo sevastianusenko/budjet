@@ -53,7 +53,7 @@ function GoalForm({ onClose, goal, today, monthlyNeeds }: FormProps) {
         deadline: deadline || null,
         isEmergency,
         isTithe,
-        startingCents: parseAmountToCents(starting) ?? 0,
+        startingCents: isTithe ? (goal?.startingCents ?? 0) : (parseAmountToCents(starting) ?? 0),
       });
       if (!res.ok) return setError(res.error);
       onClose();
@@ -116,7 +116,7 @@ function GoalForm({ onClose, goal, today, monthlyNeeds }: FormProps) {
 
         {isTithe && (
           <p className="text-sm text-ink-2">
-            The fund fills automatically from every income (percent in Settings). Use &quot;Already saved&quot; to set what&apos;s in the fund right now, for example cash you&apos;ve put aside before using Hearth.
+            The fund fills automatically from every income (percent in Settings). To set what is really in it, use Adjust on the fund card.
           </p>
         )}
         {!isTithe && (
@@ -135,16 +135,16 @@ function GoalForm({ onClose, goal, today, monthlyNeeds }: FormProps) {
           </p>
         )}
 
-        <div className="grid grid-cols-2 gap-3">
-          {!isTithe && (
+        {!isTithe && (
+          <div className="grid grid-cols-2 gap-3">
             <Field label="Deadline (optional)">
               <Input type="date" value={deadline} min={today} onChange={(e) => setDeadline(e.target.value)} />
             </Field>
-          )}
-          <Field label={isTithe ? "Already in the fund" : "Already saved"}>
-            <Input inputMode="decimal" className="num" value={starting} onChange={(e) => setStarting(e.target.value)} placeholder="0" />
-          </Field>
-        </div>
+            <Field label="Already saved">
+              <Input inputMode="decimal" className="num" value={starting} onChange={(e) => setStarting(e.target.value)} placeholder="0" />
+            </Field>
+          </div>
+        )}
 
         {!isTithe && (
         <Toggle

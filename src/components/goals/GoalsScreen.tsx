@@ -101,7 +101,7 @@ export function GoalsScreen({
               {tithe.stats.byLabelYear.length > 0 && <> · {tithe.stats.byLabelYear.map((r) => `${r.label} ${fmtMoney(r.cents, { whole: true })}`).join(", ")}</>}
             </span>
             <button type="button" onClick={() => setEditing(tithe.goal)} className="shrink-0 font-medium text-green-text">
-              Adjust balance
+              Edit name or icon
             </button>
           </div>
         </div>
