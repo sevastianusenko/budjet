@@ -20,6 +20,7 @@ export default async function ImportPage() {
       meId={viewer.user.id}
       today={viewer.today}
       prompt={chatgptPrompt(categories, subs)}
+      aiEnabled={Boolean(process.env.ANTHROPIC_API_KEY)}
     />
   );
 }

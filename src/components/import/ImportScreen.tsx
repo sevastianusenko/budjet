@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState, useTransition } from "react";
-import { Check, ChevronLeft, ChevronRight, ClipboardCopy, FileSpreadsheet, Plus, X } from "lucide-react";
+import { Camera, Check, ChevronLeft, ChevronRight, ClipboardCopy, FileSpreadsheet, Plus, Sparkles, X } from "lucide-react";
 import { importEntries } from "@/actions/import";
+import { scanReceipt } from "@/actions/scan";
 import { describeItem, parseReceiptText, type MatchCategory, type MatchSub, type ParsedItem } from "@/lib/receipt-parse";
 import { fmtMoney, parseAmountToCents } from "@/lib/money";
 import { Button } from "@/components/ui/Button";
@@ -29,6 +30,7 @@ export function ImportScreen({
   meId,
   today,
   prompt,
+  aiEnabled,
 }: {
   categories: (MatchCategory & { icon: string })[];
   subcategories: MatchSub[];
@@ -36,6 +38,8 @@ export function ImportScreen({
   meId: string;
   today: string;
   prompt: string;
+  /** True when the server has an Anthropic API key, so the photo scan can show. */
+  aiEnabled: boolean;
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -50,6 +54,9 @@ export function ImportScreen({
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const keyRef = useRef(1);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [scanning, setScanning] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
 
   const expenseCats = categories.filter((c) => c.kind === "expense" && !c.archived);
   const subsFor = (catId: string) => subcategories.filter((s) => s.categoryId === catId && !s.archived);
@@ -82,6 +89,25 @@ export function ImportScreen({
       setTimeout(() => setCopied(false), 2500);
     } catch {
       toast({ message: "Couldn't copy. Open the prompt below and copy it by hand.", tone: "error" });
+    }
+  }
+
+  /** Shrinks the photo on the phone, sends it to Claude, and drops the answer into the same box the paste route uses. */
+  async function onPhoto(file: File | undefined) {
+    if (!file) return;
+    setScanning(true);
+    setScanError(null);
+    try {
+      const image = await shrinkImage(file);
+      const res = await scanReceipt(image);
+      if (!res.ok) return setScanError(res.error);
+      applyText(res.text);
+      toast({ message: "Receipt read. Check the lines, then save." });
+    } catch (e) {
+      setScanError(e instanceof Error ? e.message : "Couldn't read that photo.");
+    } finally {
+      setScanning(false);
+      if (fileRef.current) fileRef.current.value = "";
     }
   }
 
@@ -133,6 +159,30 @@ export function ImportScreen({
         </span>
         <ChevronRight size={18} className="text-ink-3" />
       </Link>
+
+      <section className="rounded-card bg-card p-4 shadow-card">
+        <h2 className="mb-1 flex items-center gap-2 text-[13px] font-semibold uppercase tracking-wide text-ink-3">
+          <Sparkles size={14} /> Scan a photo with Claude
+        </h2>
+        {aiEnabled ? (
+          <>
+            <p className="text-sm text-ink-2">Take a photo of the receipt or pick one you already have. Claude sorts it into your categories and subcategories with every item; you check the lines and save. About a tenth of a cent per photo.</p>
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => onPhoto(e.target.files?.[0])} />
+            <Button className="mt-3 w-full" size="lg" disabled={scanning} onClick={() => fileRef.current?.click()}>
+              <Camera size={20} /> {scanning ? "Reading the receipt…" : "Take a photo or choose one"}
+            </Button>
+            {scanError && (
+              <div className="mt-3">
+                <ErrorText>{scanError}</ErrorText>
+              </div>
+            )}
+          </>
+        ) : (
+          <p className="text-sm text-ink-2">
+            Not switched on yet: add an <code className="rounded bg-card-2 px-1 text-xs">ANTHROPIC_API_KEY</code> to the server (Vercel → Settings → Environment Variables) and this becomes a one-tap scan. The paste route below always works.
+          </p>
+        )}
+      </section>
 
       <section className="rounded-card bg-card p-4 shadow-card">
         <h2 className="mb-2 text-[13px] font-semibold uppercase tracking-wide text-ink-3">A receipt with every item</h2>
@@ -286,4 +336,19 @@ export function ImportScreen({
       )}
     </div>
   );
+}
+
+/** Resizes on the phone so the upload stays small: longest side 1568px (what the model reads natively), JPEG. */
+async function shrinkImage(file: File): Promise<{ data: string; mediaType: string }> {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, 1568 / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Couldn't process the image.");
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
+  return { data: dataUrl.split(",")[1] ?? "", mediaType: "image/jpeg" };
 }

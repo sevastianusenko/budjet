@@ -5,6 +5,8 @@ const nextConfig: NextConfig = {
   // so the classic rendering model is simpler and predictable here.
   cacheComponents: false,
   serverExternalPackages: ["@electric-sql/pglite"],
+  // A receipt photo (shrunk on the phone, base64) rides inside a server action call.
+  experimental: { serverActions: { bodySizeLimit: "4mb" } },
   turbopack: {
     rules: {
       "*.css": {
