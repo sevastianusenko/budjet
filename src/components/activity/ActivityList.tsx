@@ -6,7 +6,7 @@ import type { Transaction } from "@/db/schema";
 import { dateLabel } from "@/lib/dates";
 import { fmtMoney } from "@/lib/money";
 import { Empty, MemberDot, Money } from "@/components/ui/Bits";
-import { TxRow } from "./TxRow";
+import { FeedRows } from "./FeedRows";
 import type { ItemLite } from "@/lib/items";
 
 type Filter = "all" | "expense" | "income" | "goal";
@@ -136,9 +136,7 @@ export function ActivityList({
                   {dayOut > 0 && <span className="num text-xs text-ink-3">{fmtMoney(dayOut)}</span>}
                 </div>
                 <ul className="divide-y divide-line rounded-card bg-card shadow-card">
-                  {items.map((t) => (
-                    <TxRow key={t.id} tx={t} members={members} categories={categories} subcategories={subcategories} goals={goals} items={itemsByTx[t.id]} today={today} />
-                  ))}
+                  <FeedRows txs={items} members={members} categories={categories} subcategories={subcategories} goals={goals} itemsByTx={itemsByTx} today={today} />
                 </ul>
               </section>
             );

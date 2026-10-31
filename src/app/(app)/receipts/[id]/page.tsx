@@ -61,16 +61,16 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
           {member && <MemberDot color={member.color} name={member.name} size="sm" />}
           {member?.name}
           <span className="text-ink-3">
-            · {lines.length} line{lines.length === 1 ? "" : "s"}
+            · {new Set(lines.map((l) => l.categoryId)).size} categor{new Set(lines.map((l) => l.categoryId)).size === 1 ? "y" : "ies"}
             {itemCount > 0 && `, ${itemCount} item${itemCount === 1 ? "" : "s"}`}
           </span>
           {receipt.totalCents > 0 && Math.abs(receipt.totalCents - total) > 100 && <span className="text-warn">· receipt said {fmtMoney(receipt.totalCents)}</span>}
         </p>
       </section>
 
-      <ReceiptLines lines={lines} receiptId={receipt.id} />
+      <ReceiptLines lines={lines} receiptId={receipt.id} store={receipt.store} today={viewer.today} />
       <p className="px-1 text-xs text-ink-3">
-        Tap a line to edit it. <Icon name="Tag" size={12} className="inline" /> Items are kept as the receipt showed them.
+        Tap a category to see what was bought. <Icon name="Tag" size={12} className="inline" /> Items are kept as the receipt showed them.
       </p>
     </div>
   );

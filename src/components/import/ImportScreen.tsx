@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState, useTransition } from "react";
-import { Camera, Check, ChevronLeft, ChevronRight, ClipboardCopy, FileSpreadsheet, Plus, Sparkles, X } from "lucide-react";
+import { Camera, Check, ChevronDown, ChevronLeft, ChevronRight, ClipboardCopy, FileSpreadsheet, ImageIcon, Plus, Sparkles, X } from "lucide-react";
 import { importEntries } from "@/actions/import";
 import { scanReceipt } from "@/actions/scan";
 import { describeItem, parseReceiptText, type MatchCategory, type MatchSub, type ParsedItem } from "@/lib/receipt-parse";
@@ -11,6 +11,7 @@ import { fmtMoney, parseAmountToCents } from "@/lib/money";
 import { Button } from "@/components/ui/Button";
 import { ErrorText, Field, Input, Select, inputClass } from "@/components/ui/Field";
 import { MemberDot } from "@/components/ui/Bits";
+import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/components/ui/Toast";
 
 interface Row {
@@ -54,7 +55,9 @@ export function ImportScreen({
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const keyRef = useRef(1);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
+  const [openCats, setOpenCats] = useState<Set<string>>(new Set());
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
 
@@ -107,7 +110,8 @@ export function ImportScreen({
       setScanError(e instanceof Error ? e.message : "Couldn't read that photo.");
     } finally {
       setScanning(false);
-      if (fileRef.current) fileRef.current.value = "";
+      if (cameraRef.current) cameraRef.current.value = "";
+      if (galleryRef.current) galleryRef.current.value = "";
     }
   }
 
@@ -115,7 +119,31 @@ export function ImportScreen({
   const itemCount = rows.reduce((a, r) => a + r.items.length, 0);
   const ready = rows.length > 0 && rows.every((r) => r.categoryId && (parseAmountToCents(r.amount) ?? 0) > 0);
 
+  const groups = useMemo(() => {
+    const out: { key: string; categoryId: string; rows: Row[] }[] = [];
+    for (const r of rows) {
+      if (!r.categoryId) {
+        out.push({ key: `u${r.key}`, categoryId: "", rows: [r] });
+        continue;
+      }
+      const g = out.find((x) => x.categoryId === r.categoryId);
+      if (g) g.rows.push(r);
+      else out.push({ key: r.categoryId, categoryId: r.categoryId, rows: [r] });
+    }
+    return out;
+  }, [rows]);
+
+  function toggleCat(id: string) {
+    setOpenCats((o) => {
+      const n = new Set(o);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  }
+
   function update(key: number, patch: Partial<Row>) {
+    if (patch.categoryId) setOpenCats((o) => new Set(o).add(patch.categoryId as string));
     setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch, unmatched: patch.categoryId ? null : r.unmatched } : r)));
   }
 
@@ -138,6 +166,92 @@ export function ImportScreen({
       toast({ message: `Receipt saved · ${res.count} entr${res.count === 1 ? "y" : "ies"} · ${fmtMoney(res.totalCents)}` });
       router.push(`/receipts/${res.receiptId}`);
     });
+  }
+
+  function renderRow(r: Row, nested = false) {
+    const subs = subsFor(r.categoryId);
+    const catSelect = (
+      <Select value={r.categoryId} onChange={(e) => update(r.key, { categoryId: e.target.value, subcategoryId: "" })} aria-label="Category">
+        <option value="">Category…</option>
+        {expenseCats.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.name}
+          </option>
+        ))}
+      </Select>
+    );
+    const subSelect = (
+      <Select value={r.subcategoryId} onChange={(e) => update(r.key, { subcategoryId: e.target.value })} aria-label="Subcategory" disabled={subs.length === 0}>
+        <option value="">{subs.length ? "No subcategory" : "—"}</option>
+        {subs.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.name}
+          </option>
+        ))}
+      </Select>
+    );
+    const amount = (
+      <div className="w-28">
+        <Input inputMode="decimal" className="num text-right" value={r.amount} onChange={(e) => update(r.key, { amount: e.target.value })} aria-label="Amount" />
+      </div>
+    );
+    const note = <Input value={r.note} onChange={(e) => update(r.key, { note: e.target.value })} placeholder="Note" maxLength={120} />;
+    const remove = (
+      <button type="button" onClick={() => setRows((rs) => rs.filter((x) => x.key !== r.key))} aria-label="Remove line" className="flex h-12 w-10 items-center justify-center rounded-xl text-ink-3 hover:bg-over-soft hover:text-over">
+        <X size={18} />
+      </button>
+    );
+    return (
+      <li key={r.key} className={nested ? "border-t border-line pt-3 first:border-t-0 first:pt-0" : `rounded-2xl border p-3 ${r.categoryId ? "border-line" : "border-over/60 bg-over-soft/30"}`}>
+        {!r.categoryId && <p className="mb-2 text-xs font-medium text-over">Couldn&apos;t match “{r.unmatched}”. Pick a category:</p>}
+        {nested ? (
+          <>
+            <div className="grid grid-cols-[1fr_auto] gap-2">
+              {subSelect}
+              {amount}
+            </div>
+            <div className="mt-2 grid grid-cols-[1fr_1fr_auto] gap-2">
+              {catSelect}
+              {note}
+              {remove}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="grid grid-cols-[1fr_auto] gap-2">
+              {catSelect}
+              {amount}
+            </div>
+            <div className="mt-2 grid grid-cols-[1fr_1fr_auto] gap-2">
+              {subSelect}
+              {note}
+              {remove}
+            </div>
+          </>
+        )}
+        {r.items.length > 0 && (
+          <ul className="mt-2 divide-y divide-line rounded-xl bg-card-2/60 px-3 text-sm">
+            {r.items.map((it, i) => (
+              <li key={i} className="flex items-center gap-2 py-1.5">
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate">{it.name}</span>
+                  {describeItem(it) && <span className="block text-xs text-ink-3">{describeItem(it)}</span>}
+                </span>
+                <span className="num text-ink-2">{fmtMoney(it.amountCents)}</span>
+                <button
+                  type="button"
+                  aria-label={`Remove ${it.name}`}
+                  onClick={() => update(r.key, { items: r.items.filter((_, j) => j !== i) })}
+                  className="flex h-7 w-7 items-center justify-center rounded-lg text-ink-3 hover:bg-over-soft hover:text-over"
+                >
+                  <X size={14} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </li>
+    );
   }
 
   return (
@@ -166,10 +280,14 @@ export function ImportScreen({
         </h2>
         {aiEnabled ? (
           <>
-            <p className="text-sm text-ink-2">Take a photo of the receipt or pick one you already have. Claude sorts it into your categories and subcategories with every item; you check the lines and save. About a tenth of a cent per photo.</p>
-            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => onPhoto(e.target.files?.[0])} />
-            <Button className="mt-3 w-full" size="lg" disabled={scanning} onClick={() => fileRef.current?.click()}>
-              <Camera size={20} /> {scanning ? "Reading the receipt…" : "Take a photo or choose one"}
+            <p className="text-sm text-ink-2">Take a photo of the receipt with the camera or pick one you already have. Claude sorts it into your categories and subcategories with every item; you check the lines and save. About a tenth of a cent per photo.</p>
+            <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => onPhoto(e.target.files?.[0])} />
+            <input ref={galleryRef} type="file" accept="image/*" className="hidden" onChange={(e) => onPhoto(e.target.files?.[0])} />
+            <Button className="mt-3 w-full" size="lg" disabled={scanning} onClick={() => cameraRef.current?.click()}>
+              <Camera size={20} /> {scanning ? "Reading the receipt…" : "Take a photo"}
+            </Button>
+            <Button className="mt-2 w-full" size="md" variant="outline" disabled={scanning} onClick={() => galleryRef.current?.click()}>
+              <ImageIcon size={18} /> Choose from your photos
             </Button>
             {scanError && (
               <div className="mt-3">
@@ -249,57 +367,28 @@ export function ImportScreen({
           )}
 
           <ul className="mt-4 space-y-3">
-            {rows.map((r) => {
-              const subs = subsFor(r.categoryId);
+            {groups.map((g) => {
+              if (!g.categoryId) return renderRow(g.rows[0]);
+              const cat = categories.find((c) => c.id === g.categoryId);
+              const open = openCats.has(g.categoryId);
+              const sum = g.rows.reduce((a, r) => a + (parseAmountToCents(r.amount) ?? 0), 0);
+              const n = g.rows.reduce((a, r) => a + r.items.length, 0);
+              const subNames = [...new Set(g.rows.map((r) => subcategories.find((x) => x.id === r.subcategoryId)?.name).filter((x): x is string => Boolean(x)))];
+              const meta = [subNames.join(", ") || null, n > 0 ? `${n} item${n === 1 ? "" : "s"}` : null].filter(Boolean).join(" · ");
               return (
-                <li key={r.key} className={`rounded-2xl border p-3 ${r.categoryId ? "border-line" : "border-over/60 bg-over-soft/30"}`}>
-                  {!r.categoryId && <p className="mb-2 text-xs font-medium text-over">Couldn&apos;t match “{r.unmatched}”. Pick a category:</p>}
-                  <div className="grid grid-cols-[1fr_auto] gap-2">
-                    <Select value={r.categoryId} onChange={(e) => update(r.key, { categoryId: e.target.value, subcategoryId: "" })} aria-label="Category">
-                      <option value="">Category…</option>
-                      {expenseCats.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </Select>
-                    <Input inputMode="decimal" className="num w-28 text-right" value={r.amount} onChange={(e) => update(r.key, { amount: e.target.value })} aria-label="Amount" />
-                  </div>
-                  <div className="mt-2 grid grid-cols-[1fr_1fr_auto] gap-2">
-                    <Select value={r.subcategoryId} onChange={(e) => update(r.key, { subcategoryId: e.target.value })} aria-label="Subcategory" disabled={subs.length === 0}>
-                      <option value="">{subs.length ? "No subcategory" : "—"}</option>
-                      {subs.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name}
-                        </option>
-                      ))}
-                    </Select>
-                    <Input value={r.note} onChange={(e) => update(r.key, { note: e.target.value })} placeholder="Note" maxLength={120} />
-                    <button type="button" onClick={() => setRows((rs) => rs.filter((x) => x.key !== r.key))} aria-label="Remove line" className="flex h-12 w-10 items-center justify-center rounded-xl text-ink-3 hover:bg-over-soft hover:text-over">
-                      <X size={18} />
-                    </button>
-                  </div>
-                  {r.items.length > 0 && (
-                    <ul className="mt-2 divide-y divide-line rounded-xl bg-card-2/60 px-3 text-sm">
-                      {r.items.map((it, i) => (
-                        <li key={i} className="flex items-center gap-2 py-1.5">
-                          <span className="min-w-0 flex-1 truncate">
-                            {it.name}
-                            {describeItem(it) && <span className="text-xs text-ink-3"> · {describeItem(it)}</span>}
-                          </span>
-                          <span className="num text-ink-2">{fmtMoney(it.amountCents)}</span>
-                          <button
-                            type="button"
-                            aria-label={`Remove ${it.name}`}
-                            onClick={() => update(r.key, { items: r.items.filter((_, j) => j !== i) })}
-                            className="flex h-7 w-7 items-center justify-center rounded-lg text-ink-3 hover:bg-over-soft hover:text-over"
-                          >
-                            <X size={14} />
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                <li key={g.key} className="rounded-2xl border border-line">
+                  <button type="button" aria-expanded={open} onClick={() => toggleCat(g.categoryId)} className="flex w-full items-center gap-3 rounded-2xl p-3 text-left hover:bg-card-2/60">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-card-2 text-ink-2">
+                      <Icon name={cat?.icon ?? "Tag"} size={18} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[15px] font-medium">{cat?.name ?? "Category"}</span>
+                      {meta && <span className="block truncate text-xs text-ink-3">{meta}</span>}
+                    </span>
+                    <span className="num text-[15px] font-semibold">{fmtMoney(sum)}</span>
+                    <ChevronDown size={16} className={`shrink-0 text-ink-3 transition-transform ${open ? "rotate-180" : ""}`} />
+                  </button>
+                  {open && <ul className="space-y-3 border-t border-line p-3">{g.rows.map((r) => renderRow(r, true))}</ul>}
                 </li>
               );
             })}
@@ -324,7 +413,7 @@ export function ImportScreen({
           </div>
           <div className="mt-4 flex items-center justify-between gap-3">
             <p className="text-sm text-ink-2">
-              {rows.length} line{rows.length === 1 ? "" : "s"}
+              {groups.length} categor{groups.length === 1 ? "y" : "ies"}
               {itemCount > 0 && `, ${itemCount} item${itemCount === 1 ? "" : "s"}`} · <span className="num font-semibold text-ink">{fmtMoney(totalCents)}</span>
               {totalHint !== null && Math.abs(totalHint - totalCents) > 100 && <span className="text-warn"> (receipt says {fmtMoney(totalHint)})</span>}
             </p>
