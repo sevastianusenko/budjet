@@ -4,6 +4,9 @@ import { chatgptPrompt } from "@/lib/receipt-prompt";
 import { ImportScreen } from "@/components/import/ImportScreen";
 import { ensureUncategorized } from "@/lib/uncategorized";
 
+// The photo scan runs as a server action from this page; long receipts take a while to write out.
+export const maxDuration = 60;
+
 export const metadata = { title: "Import a receipt" };
 
 export default async function ImportPage() {
