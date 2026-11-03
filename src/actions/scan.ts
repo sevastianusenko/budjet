@@ -36,7 +36,7 @@ export async function scanReceipt(raw: { data: string; mediaType: string }): Pro
     const client = new Anthropic();
     const response = await client.messages.create({
       model: MODEL,
-      max_tokens: 4096,
+      max_tokens: 16000,
       system: scanPrompt(categories, subs, viewer.today),
       messages: [
         {
